@@ -13,12 +13,73 @@
     {% endif %}
     <p>
       소속: {{ player.team|default:"-" }} ·
+      등번호: {{ player.back_number|default:"-" }} ·
       포지션: {{ player.get_position_display|default:"-" }} ·
       생년월일: {{ player.birth_date|default:"-" }} ·
       현재 상태:
       <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
     </p>
   </div>
+
+  {% if related_league %}
+    <h3>
+      {% if related_league == "2군" %}콜업 전 2군 성적{% else %}말소 전 1군 성적{% endif %}
+    </h3>
+    {% if related_stats %}
+      <table>
+        <tr>{% for key in related_stats.keys %}<th>{{ key }}</th>{% endfor %}</tr>
+        <tr>{% for value in related_stats.values %}<td>{{ value }}</td>{% endfor %}</tr>
+      </table>
+    {% else %}
+      <p>{{ related_league }} 성적 정보를 가져오지 못했습니다.</p>
+    {% endif %}
+  {% endif %}
+
+  {% if player.kbo_player_id %}
+    <h3>시즌 1군 엔트리 등록/말소 이력</h3>
+    {% if roster_periods %}
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:280px;">
+          <p style="font-size:13px; color:#6b7280; margin-bottom:4px;">
+            등록 기간{% if roster_periods.registered_total %} · 시즌 합계 {{ roster_periods.registered_total }}일{% endif %}
+          </p>
+          <table>
+            <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
+            {% for period in roster_periods.registered %}
+              <tr>
+                <td>{{ period.team }}</td>
+                <td>{{ period.start }}</td>
+                <td>{{ period.end }}</td>
+                <td>{{ period.days }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4">등록 이력 없음</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <p style="font-size:13px; color:#6b7280; margin-bottom:4px;">
+            말소 기간{% if roster_periods.cancelled_total %} · 시즌 합계 {{ roster_periods.cancelled_total }}일{% endif %}
+          </p>
+          <table>
+            <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
+            {% for period in roster_periods.cancelled %}
+              <tr>
+                <td>{{ period.team }}</td>
+                <td>{{ period.start }}</td>
+                <td>{{ period.end }}</td>
+                <td>{{ period.days }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4">말소 이력 없음</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <p>등록/말소 이력을 가져오지 못했습니다.</p>
+    {% endif %}
+  {% endif %}
 
   <h3>이력</h3>
   <table>

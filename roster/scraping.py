@@ -100,6 +100,19 @@ class PlayerProfile:
     team: str
     position: str
     photo_url: str
+    back_number: str = ""
+
+
+BACK_NO_RE = re.compile(r'id="[^"]*lblBackNo"[^>]*>([^<]*)<')
+
+
+def fetch_back_number(player_id: str, position: str) -> str:
+    """선수 상세 페이지(타자/투수)에서 등번호를 가져온다."""
+    url_template = PITCHER_DETAIL_URL["1군"] if position == "투" else HITTER_DETAIL_URL["1군"]
+    resp = requests.get(url_template.format(player_id=player_id), headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    m = BACK_NO_RE.search(resp.text)
+    return m.group(1).strip() if m else ""
 
 
 def resolve_player_profile(name: str, team: str | None = None) -> PlayerProfile | None:
@@ -141,10 +154,117 @@ def resolve_player_profile(name: str, team: str | None = None) -> PlayerProfile 
 
     photo_url = "https:" + PHOTO_URL_TEMPLATE.format(year=date.today().year, player_id=player_id)
 
+    try:
+        back_number = fetch_back_number(player_id, position)
+    except requests.RequestException:
+        back_number = ""
+
     return PlayerProfile(
         kbo_player_id=player_id,
         birth_date=birth_date,
         team=row_team,
         position=position,
         photo_url=photo_url,
+        back_number=back_number,
     )
+
+
+HITTER_DETAIL_URL = {
+    "1군": "https://www.koreabaseball.com/Record/Player/HitterDetail/Basic.aspx?playerId={player_id}",
+    "2군": "https://www.koreabaseball.com/Futures/Player/HitterDetail.aspx?playerId={player_id}",
+}
+PITCHER_DETAIL_URL = {
+    "1군": "https://www.koreabaseball.com/Record/Player/PitcherDetail/Basic.aspx?playerId={player_id}",
+    "2군": "https://www.koreabaseball.com/Futures/Player/PitcherDetail.aspx?playerId={player_id}",
+}
+
+
+def _parse_season_stats_table(html: str) -> dict | None:
+    """선수 상세 페이지 상단의 '이번 시즌 성적' 표 하나를 헤더-값 딕셔너리로 파싱한다."""
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.select_one("div.player_records div.tbl-type02 table.tbl")
+    if not table:
+        return None
+
+    headers = []
+    for th in table.select("thead th"):
+        link = th.find("a")
+        label = link.get("title") if link and link.get("title") else th.get_text(strip=True)
+        headers.append(label)
+
+    row = table.select_one("tbody tr")
+    if not row:
+        return None
+    cells = [td.get_text(strip=True) for td in row.select("td")]
+    if len(cells) != len(headers):
+        # 표에 데이터가 없는 경우 "기록이 없습니다" 형태의 colspan 행만 존재한다.
+        return None
+
+    return dict(zip(headers, cells))
+
+
+def fetch_hitter_stats(player_id: str, league: str = "1군") -> dict | None:
+    """선수의 해당 시즌 타자 기록(1군 또는 2군 퓨처스)을 가져온다."""
+    url = HITTER_DETAIL_URL[league].format(player_id=player_id)
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    return _parse_season_stats_table(resp.text)
+
+
+def fetch_pitcher_stats(player_id: str, league: str = "1군") -> dict | None:
+    """선수의 해당 시즌 투수 기록(1군 또는 2군 퓨처스)을 가져온다."""
+    url = PITCHER_DETAIL_URL[league].format(player_id=player_id)
+    resp = requests.get(url, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    return _parse_season_stats_table(resp.text)
+
+
+def fetch_player_stats(player_id: str, position: str, league: str = "1군") -> dict | None:
+    """포지션에 맞춰 타자/투수 기록 조회 함수를 골라 호출한다."""
+    if position == "투":
+        return fetch_pitcher_stats(player_id, league)
+    return fetch_hitter_stats(player_id, league)
+
+
+@dataclass
+class RosterPeriod:
+    team: str
+    start: str
+    end: str
+    days: str  # "10 (부상자명단)"처럼 사유가 함께 표기되는 경우가 있어 텍스트로 보관
+
+
+def _parse_roster_periods(html: str) -> dict:
+    """선수 상세 페이지의 'KBO 리그 엔트리 등록/말소 일수' 표를 파싱한다."""
+    soup = BeautifulSoup(html, "lxml")
+    panel = soup.select_one("#cphContents_cphContents_cphContents_pnlRoster")
+    result = {"registered": [], "registered_total": None, "cancelled": [], "cancelled_total": None}
+    if not panel:
+        return result
+
+    def _parse_table(table):
+        rows = []
+        for tr in table.select("tbody tr"):
+            cells = tr.select("th, td")
+            if len(cells) != 4:
+                continue
+            team, start, end, days = [c.get_text(strip=True) for c in cells]
+            rows.append(RosterPeriod(team=team, start=start, end=end, days=days))
+        total_cell = table.select_one("tfoot td:last-child")
+        total = total_cell.get_text(strip=True) if total_cell else None
+        return rows, total
+
+    tables = panel.select("div.tbl-type02 table.tbl")
+    if len(tables) > 0:
+        result["registered"], result["registered_total"] = _parse_table(tables[0])
+    if len(tables) > 1:
+        result["cancelled"], result["cancelled_total"] = _parse_table(tables[1])
+    return result
+
+
+def fetch_roster_periods(player_id: str, position: str) -> dict:
+    """선수의 이번 시즌 KBO 리그 엔트리 등록/말소 기간(일수) 이력을 가져온다."""
+    url_template = PITCHER_DETAIL_URL["1군"] if position == "투" else HITTER_DETAIL_URL["1군"]
+    resp = requests.get(url_template.format(player_id=player_id), headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    return _parse_roster_periods(resp.text)

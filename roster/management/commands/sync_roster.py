@@ -78,4 +78,6 @@ class Command(BaseCommand):
         player.kbo_player_id = profile.kbo_player_id
         player.birth_date = profile.birth_date
         player.photo_url = profile.photo_url
-        player.save(update_fields=["kbo_player_id", "birth_date", "photo_url"])
+        if profile.back_number:
+            player.back_number = profile.back_number
+        player.save(update_fields=["kbo_player_id", "birth_date", "photo_url", "back_number"])

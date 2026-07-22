@@ -1,6 +1,15 @@
+import requests
 from django.shortcuts import get_object_or_404, render
 
+from . import scraping
 from .models import Player, RosterEvent, Team
+
+# 방금 어느 리그에서 옮겨왔는지에 따라 반대편 리그 성적을 보여준다.
+# 2군->1군 콜업: 콜업 전 2군 성적을 보여준다 / 1군->2군 말소: 말소 전 1군 성적을 보여준다.
+_RELATED_LEAGUE = {
+    RosterEvent.ACTIVE_1GUN: "2군",
+    RosterEvent.OPTIONED_2GUN: "1군",
+}
 
 
 def team_list(request):
@@ -33,7 +42,36 @@ def team_detail(request, team_id):
 def player_detail(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
     events = player.events.select_related("team").all()
-    return render(request, "roster/player_detail.html", {"player": player, "events": events})
+
+    status = player.current_status
+    related_league = _RELATED_LEAGUE.get(status.event_type) if status else None
+    related_stats = None
+    if related_league and player.kbo_player_id:
+        try:
+            related_stats = scraping.fetch_player_stats(
+                player.kbo_player_id, player.position, related_league
+            )
+        except requests.RequestException:
+            related_stats = None
+
+    roster_periods = None
+    if player.kbo_player_id:
+        try:
+            roster_periods = scraping.fetch_roster_periods(player.kbo_player_id, player.position)
+        except requests.RequestException:
+            roster_periods = None
+
+    return render(
+        request,
+        "roster/player_detail.html",
+        {
+            "player": player,
+            "events": events,
+            "related_league": related_league,
+            "related_stats": related_stats,
+            "roster_periods": roster_periods,
+        },
+    )
 
 
 def recent_events(request):

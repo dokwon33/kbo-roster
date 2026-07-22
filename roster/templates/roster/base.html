@@ -22,9 +22,24 @@
     a.player-link { color: #14213d; text-decoration: none; }
     a.player-link:hover { text-decoration: underline; }
     header a.brand { display: inline-flex; align-items: center; gap: 8px; }
-    header a.brand img { height: 22px; }
+    header a.brand img { height: 22px; display: block; background: #fff; padding: 4px 8px; border-radius: 6px; }
+    header .info-btn {
+      background: none; border: 1px solid #475569; color: #cbd5e1; border-radius: 999px;
+      font-size: 13px; padding: 3px 10px; margin-left: 16px; cursor: pointer; font-family: inherit;
+    }
+    header .info-btn:hover { background: #1e2a4a; color: #fff; }
     .player-photo { width: 100%; max-width: 160px; border-radius: 8px; background: #e5e7eb; }
     .player-photo-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 6px; background: #e5e7eb; }
+    #aboutDialog { border: none; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; }
+    #aboutDialog::backdrop { background: rgba(15, 23, 42, .5); }
+    #aboutDialog .dialog-body { padding: 20px 24px; }
+    #aboutDialog h3 { margin-top: 0; color: #14213d; }
+    #aboutDialog p { line-height: 1.6; color: #374151; }
+    #aboutDialog .dialog-footer { text-align: right; padding: 0 24px 20px; }
+    #aboutDialog button.close-btn {
+      background: #14213d; color: #fff; border: none; border-radius: 6px;
+      padding: 6px 14px; cursor: pointer; font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -37,8 +52,26 @@
       <a href="{% url 'roster:team_list' %}">구단별 현황</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
       <a href="/admin/">관리자</a>
+      <button type="button" class="info-btn" onclick="document.getElementById('aboutDialog').showModal()">ℹ️ 서비스 소개</button>
     </nav>
   </header>
+
+  <dialog id="aboutDialog">
+    <div class="dialog-body">
+      <h3>KBO 선수단 관리란?</h3>
+      <p>
+        KBO 공식 사이트의 1군 등록/말소 현황을 자동으로 수집해 구단별 로스터와
+        선수별 등록 이력을 한눈에 볼 수 있는 서비스입니다. 
+        2군에서 1군으로 콜업된 선수는 콜업 전 2군 성적을, 1군에서 말소된 선수는 말소 전
+        1군 성적을 함께 보여줍니다.
+        매일 오전 9시에 자동으로 데이터를 수집하며, 최근 30일간의 변동 사항을 확인할 수 있습니다.
+      </p>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="close-btn" onclick="document.getElementById('aboutDialog').close()">닫기</button>
+    </div>
+  </dialog>
+
   <main>
     {% block content %}{% endblock %}
   </main>
