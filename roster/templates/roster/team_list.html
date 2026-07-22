@@ -1,0 +1,27 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}구단별 현황 · KBO 선수단 관리{% endblock %}
+{% block content %}
+  <h2>구단별 1군/2군 현황</h2>
+  <div class="grid">
+    {% for card in cards %}
+      <div class="card">
+        <h3><a class="player-link" href="{% url 'roster:team_detail' card.team.id %}">{{ card.team.name }}</a></h3>
+        <p>1군 {{ card.active|length }}명 · 2군/기타 {{ card.others|length }}명</p>
+        <table>
+          {% for player in card.active %}
+            <tr>
+              <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
+              <td>{{ player.position }}</td>
+              <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3">1군 등록 선수 없음</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% empty %}
+      <p>아직 수집된 데이터가 없습니다. <code>python manage.py sync_roster</code> 를 실행해 보세요.</p>
+    {% endfor %}
+  </div>
+{% endblock %}

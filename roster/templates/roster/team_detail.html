@@ -1,0 +1,37 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}{{ team.name }} · KBO 선수단 관리{% endblock %}
+{% block content %}
+  <p><a href="{% url 'roster:team_list' %}">&larr; 전체 구단</a></p>
+  <h2>{{ team.name }}</h2>
+
+  <h3>1군 등록 ({{ active_players|length }}명)</h3>
+  <table>
+    <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
+    {% for player in active_players %}
+      <tr>
+        <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
+        <td>{{ player.position }}</td>
+        <td>{{ player.back_number }}</td>
+        <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4">없음</td></tr>
+    {% endfor %}
+  </table>
+
+  <h3>2군 / 기타 ({{ other_players|length }}명)</h3>
+  <table>
+    <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
+    {% for player in other_players %}
+      <tr>
+        <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
+        <td>{{ player.position }}</td>
+        <td>{{ player.back_number }}</td>
+        <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4">없음</td></tr>
+    {% endfor %}
+  </table>
+{% endblock %}

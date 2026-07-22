@@ -1,0 +1,35 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}{{ player.name }} · KBO 선수단 관리{% endblock %}
+{% block content %}
+  {% if player.team %}
+    <p><a href="{% url 'roster:team_detail' player.team.id %}">&larr; {{ player.team.name }}</a></p>
+  {% endif %}
+  <h2>{{ player.name }}</h2>
+  <p>
+    소속: {{ player.team|default:"-" }} ·
+    포지션: {{ player.get_position_display|default:"-" }} ·
+    현재 상태:
+    <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+  </p>
+
+  <h3>이력</h3>
+  <table>
+    <tr><th>날짜</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
+    {% for event in events %}
+      <tr>
+        <td>{{ event.event_date }}</td>
+        <td><span class="badge {{ event|badge_class }}">{{ event.get_event_type_display }}</span></td>
+        <td>{{ event.team|default:"-" }}</td>
+        <td>{{ event.reason|default:"-" }}</td>
+        <td>
+          {{ event.get_source_display }}
+          {% if event.source_name %}· {{ event.source_name }}{% endif %}
+          {% if event.source_url %}<a href="{{ event.source_url }}" target="_blank" rel="noopener">🔗</a>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">이력 없음</td></tr>
+    {% endfor %}
+  </table>
+{% endblock %}
