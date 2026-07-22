@@ -26,6 +26,11 @@ class Player(models.Model):
     position = models.CharField(max_length=10, choices=POSITION_CHOICES, blank=True)
     back_number = models.CharField(max_length=5, blank=True)
     birth_date = models.DateField(null=True, blank=True)
+    kbo_player_id = models.CharField(
+        max_length=20, blank=True, unique=True, null=True,
+        help_text="KBO 공식 사이트 선수 고유 코드 (pcode). 사진 URL 조회 등에 사용",
+    )
+    photo_url = models.URLField(blank=True, help_text="KBO 공식 사이트 선수 사진 URL (재호스팅하지 않고 링크만 저장)")
 
     class Meta:
         ordering = ["team__name", "name"]

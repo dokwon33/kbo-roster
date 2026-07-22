@@ -21,11 +21,18 @@
     .badge-other { background: #e5e7eb; color: #374151; }
     a.player-link { color: #14213d; text-decoration: none; }
     a.player-link:hover { text-decoration: underline; }
+    header a.brand { display: inline-flex; align-items: center; gap: 8px; }
+    header a.brand img { height: 22px; }
+    .player-photo { width: 100%; max-width: 160px; border-radius: 8px; background: #e5e7eb; }
+    .player-photo-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 6px; background: #e5e7eb; }
   </style>
 </head>
 <body>
   <header>
-    <a href="{% url 'roster:team_list' %}">⚾ KBO 선수단 관리</a>
+    <a class="brand" href="{% url 'roster:team_list' %}">
+      <img src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/KBOHome/resources/images/common/h1_logo.png" alt="KBO">
+      선수단 관리
+    </a>
     <nav>
       <a href="{% url 'roster:team_list' %}">구단별 현황</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>

@@ -11,7 +11,10 @@
         <table>
           {% for player in card.active %}
             <tr>
-              <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
+              <td>
+                {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
+                <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
+              </td>
               <td>{{ player.position }}</td>
               <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
             </tr>

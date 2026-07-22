@@ -18,9 +18,10 @@ class RosterEventInline(admin.TabularInline):
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ("name", "team", "position", "back_number", "current_status_display")
+    list_display = ("name", "team", "position", "back_number", "kbo_player_id", "current_status_display")
     list_filter = ("team", "position")
-    search_fields = ("name",)
+    search_fields = ("name", "kbo_player_id")
+    fields = ("name", "team", "position", "back_number", "birth_date", "kbo_player_id", "photo_url")
     inlines = [RosterEventInline]
 
     @admin.display(description="현재 상태")

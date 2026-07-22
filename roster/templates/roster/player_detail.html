@@ -6,12 +6,19 @@
     <p><a href="{% url 'roster:team_detail' player.team.id %}">&larr; {{ player.team.name }}</a></p>
   {% endif %}
   <h2>{{ player.name }}</h2>
-  <p>
-    소속: {{ player.team|default:"-" }} ·
-    포지션: {{ player.get_position_display|default:"-" }} ·
-    현재 상태:
-    <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
-  </p>
+  <div style="display:flex; gap:16px; align-items:flex-start;">
+    {% if player.photo_url %}
+      <img class="player-photo" src="{{ player.photo_url }}" alt="{{ player.name }}"
+           onerror="this.style.display='none'">
+    {% endif %}
+    <p>
+      소속: {{ player.team|default:"-" }} ·
+      포지션: {{ player.get_position_display|default:"-" }} ·
+      생년월일: {{ player.birth_date|default:"-" }} ·
+      현재 상태:
+      <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+    </p>
+  </div>
 
   <h3>이력</h3>
   <table>

@@ -12,9 +12,12 @@ import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.koreabaseball.com/Player/RegisterAll.aspx"
+SEARCH_URL = "https://www.koreabaseball.com/Player/Search.aspx"
+PHOTO_URL_TEMPLATE = "//6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{year}/{player_id}.jpg"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; kbo-roster-tracker/1.0)"}
 
 DATE_LABEL_RE = re.compile(r"(\d{4})\.(\d{2})\.(\d{2})")
+PLAYER_ID_RE = re.compile(r"playerId=(\d+)")
 
 
 @dataclass
@@ -88,3 +91,60 @@ def fetch_for_date(target: date) -> ScrapeResult:
     resp = session.post(BASE_URL, data=form_data, headers=HEADERS, timeout=20)
     resp.raise_for_status()
     return _parse_page(resp.text)
+
+
+@dataclass
+class PlayerProfile:
+    kbo_player_id: str
+    birth_date: date | None
+    team: str
+    position: str
+    photo_url: str
+
+
+def resolve_player_profile(name: str, team: str | None = None) -> PlayerProfile | None:
+    """이름으로 KBO 공식 선수 조회 페이지를 검색해 고유 코드/생년월일/사진 URL을 찾는다.
+
+    동명이인이 여러 명 나오면 team이 일치하는 행을 우선한다.
+    """
+    resp = requests.get(SEARCH_URL, params={"searchWord": name}, headers=HEADERS, timeout=20)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "lxml")
+
+    candidates = []
+    for link in soup.select("a[href*='playerId=']"):
+        m = PLAYER_ID_RE.search(link["href"])
+        if not m:
+            continue
+        row = link.find_parent("tr")
+        if not row:
+            continue
+        cells = [td.get_text(strip=True) for td in row.select("td")]
+        if len(cells) < 5:
+            continue
+        _, player_name, row_team, position, birth_str = cells[:5]
+        if player_name != name:
+            continue
+        candidates.append((m.group(1), row_team, position, birth_str))
+
+    if not candidates:
+        return None
+
+    chosen = next((c for c in candidates if c[1] == team), candidates[0]) if team else candidates[0]
+    player_id, row_team, position, birth_str = chosen
+
+    birth_date = None
+    try:
+        birth_date = datetime.strptime(birth_str, "%Y-%m-%d").date()
+    except ValueError:
+        pass
+
+    photo_url = "https:" + PHOTO_URL_TEMPLATE.format(year=date.today().year, player_id=player_id)
+
+    return PlayerProfile(
+        kbo_player_id=player_id,
+        birth_date=birth_date,
+        team=row_team,
+        position=position,
+        photo_url=photo_url,
+    )
