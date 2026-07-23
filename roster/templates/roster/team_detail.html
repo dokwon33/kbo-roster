@@ -1,42 +1,106 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
 {% block title %}{{ team.name }} · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: #64748b; text-decoration: none; font-size: 13px; margin-bottom: 12px;
+  }
+  .back-link:hover { color: #14213d; }
+
+  .team-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .team-header .team-logo-lg { width: 44px; height: 44px; object-fit: contain; }
+  .team-header h2 { margin: 0; font-size: 22px; color: #14213d; }
+  .team-header .team-summary { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+  .roster-section { margin-bottom: 24px; }
+  .roster-section h3 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; color: #14213d; margin: 0 0 10px;
+  }
+  .roster-section h3 .count-tag {
+    font-size: 12px; font-weight: normal; color: #64748b;
+    background: #eef1f6; border-radius: 999px; padding: 1px 9px;
+  }
+  .roster-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    overflow-x: auto;
+  }
+  .roster-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+  .roster-table th {
+    text-align: left; font-size: 12px; color: #64748b; font-weight: 600;
+    padding: 10px 12px; border-bottom: 2px solid #e5e7eb;
+  }
+  .roster-table td { padding: 8px 12px; font-size: 14px; border-bottom: 1px solid #f0f1f3; }
+  .roster-table tbody tr:hover { background: #f8fafc; }
+  .roster-table tbody tr:last-child td { border-bottom: none; }
+  .roster-table .player-cell { display: flex; align-items: center; }
+  .roster-table .empty-cell { color: #94a3b8; text-align: center; padding: 20px; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <p><a href="{% url 'roster:team_list' %}">&larr; 전체 구단</a></p>
-  <h2>
+  <a class="back-link" href="{% url 'roster:team_list' %}">&larr; 전체 구단</a>
+
+  <div class="team-header">
     {% with logo=team.name|team_logo_url %}
-      {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+      {% if logo %}<img class="team-logo-lg" src="{{ logo }}" alt="">{% endif %}
     {% endwith %}
-    {{ team.name }}
-  </h2>
+    <div>
+      <h2>{{ team.name }}</h2>
+      <div class="team-summary">1군 {{ active_players|length }}명 · 2군/기타 {{ other_players|length }}명</div>
+    </div>
+  </div>
 
-  <h3>1군 등록 ({{ active_players|length }}명)</h3>
-  <table>
-    <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
-    {% for player in active_players %}
-      <tr>
-        <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
-        <td>{{ player.position }}</td>
-        <td>{{ player.back_number }}</td>
-        <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="4">없음</td></tr>
-    {% endfor %}
-  </table>
+  <div class="roster-section">
+    <h3>1군 등록 <span class="count-tag">{{ active_players|length }}명</span></h3>
+    <div class="roster-card">
+      <table class="roster-table">
+        <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
+        {% for player in active_players %}
+          <tr>
+            <td>
+              <span class="player-cell">
+                {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
+                <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
+              </span>
+            </td>
+            <td>{{ player.position }}</td>
+            <td>{{ player.back_number|default:"-" }}</td>
+            <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty-cell" colspan="4">없음</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
 
-  <h3>2군 / 기타 ({{ other_players|length }}명)</h3>
-  <table>
-    <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
-    {% for player in other_players %}
-      <tr>
-        <td><a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a></td>
-        <td>{{ player.position }}</td>
-        <td>{{ player.back_number }}</td>
-        <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="4">없음</td></tr>
-    {% endfor %}
-  </table>
+  <div class="roster-section">
+    <h3>2군 / 기타 <span class="count-tag">{{ other_players|length }}명</span></h3>
+    <div class="roster-card">
+      <table class="roster-table">
+        <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
+        {% for player in other_players %}
+          <tr>
+            <td>
+              <span class="player-cell">
+                {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
+                <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
+              </span>
+            </td>
+            <td>{{ player.position }}</td>
+            <td>{{ player.back_number|default:"-" }}</td>
+            <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty-cell" colspan="4">없음</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
 {% endblock %}

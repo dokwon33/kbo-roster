@@ -1,103 +1,186 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
 {% block title %}{{ player.name }} · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: #64748b; text-decoration: none; font-size: 13px; margin-bottom: 12px;
+  }
+  .back-link:hover { color: #14213d; }
+
+  .player-hero {
+    display: flex; gap: 20px; align-items: flex-start;
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 20px; margin-bottom: 24px;
+  }
+  .player-hero .player-photo { margin: 0; }
+  .player-hero h2 { margin: 0 0 10px; font-size: 22px; color: #14213d; }
+  .player-meta-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px 20px; font-size: 14px;
+  }
+  .player-meta-grid .meta-label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 2px; }
+  .player-meta-grid .meta-value { color: #1c1e21; font-weight: 600; }
+
+  .section-card { margin-bottom: 24px; }
+  .section-card h3 {
+    font-size: 15px; color: #14213d; margin: 0 0 10px;
+  }
+  .card-box {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    overflow-x: auto;
+  }
+  .card-box table { width: 100%; border-collapse: collapse; margin-top: 0; min-width: 420px; }
+  .card-box th {
+    text-align: left; font-size: 12px; color: #64748b; font-weight: 600;
+    padding: 10px 12px; border-bottom: 2px solid #e5e7eb; white-space: nowrap;
+  }
+  .card-box td { padding: 8px 12px; font-size: 14px; border-bottom: 1px solid #f0f1f3; white-space: nowrap; }
+  .card-box tbody tr:hover { background: #f8fafc; }
+  .card-box tbody tr:last-child td { border-bottom: none; }
+  .card-box .empty-cell { color: #94a3b8; text-align: center; padding: 20px; white-space: normal; }
+  .fetch-fail-note { color: #94a3b8; font-size: 13px; padding: 16px; }
+
+  .roster-period-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .roster-period-grid .period-label {
+    font-size: 12px; color: #64748b; margin: 0 0 6px;
+  }
+  .roster-period-grid .period-label .total-tag {
+    background: #eef1f6; border-radius: 999px; padding: 1px 8px; margin-left: 6px;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
   {% if player.team %}
-    <p><a href="{% url 'roster:team_detail' player.team.id %}">&larr; {{ player.team.name }}</a></p>
+    <a class="back-link" href="{% url 'roster:team_detail' player.team.id %}">&larr; {{ player.team.name }}</a>
   {% endif %}
-  <h2>{{ player.name }}</h2>
-  <div style="display:flex; gap:16px; align-items:flex-start;">
+
+  <div class="player-hero">
     {% if player.photo_url %}
       <img class="player-photo" src="{{ player.photo_url }}" alt="{{ player.name }}"
            onerror="this.style.display='none'">
     {% endif %}
-    <p>
-      소속: {{ player.team|default:"-" }} ·
-      등번호: {{ player.back_number|default:"-" }} ·
-      포지션: {{ player.get_position_display|default:"-" }} ·
-      생년월일: {{ player.birth_date|default:"-" }} ·
-      현재 상태:
-      <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
-    </p>
+    <div>
+      <h2>{{ player.name }}</h2>
+      <div class="player-meta-grid">
+        <div>
+          <span class="meta-label">소속</span>
+          <span class="meta-value">{{ player.team|default:"-" }}</span>
+        </div>
+        <div>
+          <span class="meta-label">등번호</span>
+          <span class="meta-value">{{ player.back_number|default:"-" }}</span>
+        </div>
+        <div>
+          <span class="meta-label">포지션</span>
+          <span class="meta-value">{{ player.get_position_display|default:"-" }}</span>
+        </div>
+        <div>
+          <span class="meta-label">생년월일</span>
+          <span class="meta-value">{{ player.birth_date|default:"-" }}</span>
+        </div>
+        <div>
+          <span class="meta-label">현재 상태</span>
+          <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   {% if related_league %}
-    <h3>
-      {% if related_league == "2군" %}콜업 전 2군 성적{% else %}말소 전 1군 성적{% endif %}
-    </h3>
-    {% if related_stats %}
-      <table>
-        <tr>{% for key in related_stats.keys %}<th>{{ key }}</th>{% endfor %}</tr>
-        <tr>{% for value in related_stats.values %}<td>{{ value }}</td>{% endfor %}</tr>
-      </table>
-    {% else %}
-      <p>{{ related_league }} 성적 정보를 가져오지 못했습니다.</p>
-    {% endif %}
+    <div class="section-card">
+      <h3>{% if related_league == "2군" %}콜업 전 2군 성적{% else %}말소 전 1군 성적{% endif %}</h3>
+      <div class="card-box">
+        {% if related_stats %}
+          <table>
+            <tr>{% for key in related_stats.keys %}<th>{{ key }}</th>{% endfor %}</tr>
+            <tr>{% for value in related_stats.values %}<td>{{ value }}</td>{% endfor %}</tr>
+          </table>
+        {% else %}
+          <p class="fetch-fail-note">{{ related_league }} 성적 정보를 가져오지 못했습니다.</p>
+        {% endif %}
+      </div>
+    </div>
   {% endif %}
 
   {% if player.kbo_player_id %}
-    <h3>시즌 1군 엔트리 등록/말소 이력</h3>
-    {% if roster_periods %}
-      <div style="display:flex; gap:24px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:280px;">
-          <p style="font-size:13px; color:#6b7280; margin-bottom:4px;">
-            등록 기간{% if roster_periods.registered_total %} · 시즌 합계 {{ roster_periods.registered_total }}일{% endif %}
-          </p>
-          <table>
-            <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
-            {% for period in roster_periods.registered %}
-              <tr>
-                <td>{{ period.team }}</td>
-                <td>{{ period.start }}</td>
-                <td>{{ period.end }}</td>
-                <td>{{ period.days }}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="4">등록 이력 없음</td></tr>
-            {% endfor %}
-          </table>
+    <div class="section-card">
+      <h3>시즌 1군 엔트리 등록/말소 이력</h3>
+      {% if roster_periods %}
+        <div class="roster-period-grid">
+          <div>
+            <p class="period-label">
+              등록 기간
+              {% if roster_periods.registered_total %}<span class="total-tag">시즌 합계 {{ roster_periods.registered_total }}일</span>{% endif %}
+            </p>
+            <div class="card-box">
+              <table>
+                <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
+                {% for period in roster_periods.registered %}
+                  <tr>
+                    <td>{{ period.team }}</td>
+                    <td>{{ period.start }}</td>
+                    <td>{{ period.end }}</td>
+                    <td>{{ period.days }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td class="empty-cell" colspan="4">등록 이력 없음</td></tr>
+                {% endfor %}
+              </table>
+            </div>
+          </div>
+          <div>
+            <p class="period-label">
+              말소 기간
+              {% if roster_periods.cancelled_total %}<span class="total-tag">시즌 합계 {{ roster_periods.cancelled_total }}일</span>{% endif %}
+            </p>
+            <div class="card-box">
+              <table>
+                <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
+                {% for period in roster_periods.cancelled %}
+                  <tr>
+                    <td>{{ period.team }}</td>
+                    <td>{{ period.start }}</td>
+                    <td>{{ period.end }}</td>
+                    <td>{{ period.days }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td class="empty-cell" colspan="4">말소 이력 없음</td></tr>
+                {% endfor %}
+              </table>
+            </div>
+          </div>
         </div>
-        <div style="flex:1; min-width:280px;">
-          <p style="font-size:13px; color:#6b7280; margin-bottom:4px;">
-            말소 기간{% if roster_periods.cancelled_total %} · 시즌 합계 {{ roster_periods.cancelled_total }}일{% endif %}
-          </p>
-          <table>
-            <tr><th>구단</th><th>시작</th><th>종료</th><th>일수</th></tr>
-            {% for period in roster_periods.cancelled %}
-              <tr>
-                <td>{{ period.team }}</td>
-                <td>{{ period.start }}</td>
-                <td>{{ period.end }}</td>
-                <td>{{ period.days }}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="4">말소 이력 없음</td></tr>
-            {% endfor %}
-          </table>
-        </div>
-      </div>
-    {% else %}
-      <p>등록/말소 이력을 가져오지 못했습니다.</p>
-    {% endif %}
+      {% else %}
+        <div class="card-box"><p class="fetch-fail-note">등록/말소 이력을 가져오지 못했습니다.</p></div>
+      {% endif %}
+    </div>
   {% endif %}
 
-  <h3>이력</h3>
-  <table>
-    <tr><th>날짜</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
-    {% for event in events %}
-      <tr>
-        <td>{{ event.event_date }}</td>
-        <td><span class="badge {{ event|badge_class }}">{{ event.get_event_type_display }}</span></td>
-        <td>{{ event.team|default:"-" }}</td>
-        <td>{{ event.reason|default:"-" }}</td>
-        <td>
-          {{ event.get_source_display }}
-          {% if event.source_name %}· {{ event.source_name }}{% endif %}
-          {% if event.source_url %}<a href="{{ event.source_url }}" target="_blank" rel="noopener">🔗</a>{% endif %}
-        </td>
-      </tr>
-    {% empty %}
-      <tr><td colspan="5">이력 없음</td></tr>
-    {% endfor %}
-  </table>
+  <div class="section-card">
+    <h3>이력</h3>
+    <div class="card-box">
+      <table>
+        <tr><th>날짜</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
+        {% for event in events %}
+          <tr>
+            <td>{{ event.event_date }}</td>
+            <td><span class="badge {{ event|badge_class }}">{{ event.get_event_type_display }}</span></td>
+            <td>{{ event.team|default:"-" }}</td>
+            <td>{{ event.reason|default:"-" }}</td>
+            <td>
+              {{ event.get_source_display }}
+              {% if event.source_name %}· {{ event.source_name }}{% endif %}
+              {% if event.source_url %}<a href="{{ event.source_url }}" target="_blank" rel="noopener">🔗</a>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td class="empty-cell" colspan="5">이력 없음</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
 {% endblock %}
