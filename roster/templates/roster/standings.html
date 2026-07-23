@@ -45,6 +45,15 @@
   .streak-loss { color: #b91c1c; font-weight: 600; }
   .empty-row td { color: #94a3b8; padding: 20px; }
 
+  .ps-badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .ps-ks { background: #fef3c7; color: #92400e; }
+  .ps-po { background: #dbeafe; color: #1e40af; }
+  .ps-spo { background: #dcfce7; color: #166534; }
+  .ps-wc { background: #e5e7eb; color: #374151; }
+
   @media (max-width: 640px) {
     .standings-table th, .standings-table td { font-size: 12px; padding: 7px 5px; }
   }
@@ -58,7 +67,7 @@
       <table class="standings-table">
         <tr>
           <th>순위</th><th>팀명</th><th>경기</th><th>승</th><th>패</th><th>무</th>
-          <th>승률</th><th>게임차</th><th>최근10경기</th><th>연속</th><th>홈</th><th>어웨이</th>
+          <th>승률</th><th>게임차</th><th>최근10경기</th><th>연속</th><th>홈</th><th>어웨이</th><th>포스트시즌</th>
         </tr>
         {% for row in standings_1gun %}
           <tr class="{% if row.rank == '1' %}rank-1{% endif %} {% if row.rank == '5' %}cutoff-row{% endif %}">
@@ -83,9 +92,14 @@
             <td class="{{ row.streak|streak_class }}">{{ row.streak }}</td>
             <td>{{ row.home_record }}</td>
             <td>{{ row.away_record }}</td>
+            <td>
+              {% with label=row.rank|postseason_label %}
+                {% if label %}<span class="ps-badge {{ row.rank|postseason_class }}">{{ label }}</span>{% endif %}
+              {% endwith %}
+            </td>
           </tr>
         {% empty %}
-          <tr class="empty-row"><td colspan="12">데이터를 불러올 수 없습니다</td></tr>
+          <tr class="empty-row"><td colspan="13">데이터를 불러올 수 없습니다</td></tr>
         {% endfor %}
       </table>
     </div>
