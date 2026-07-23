@@ -1,8 +1,13 @@
+import hmac
+import io
 from collections import defaultdict
 
 import requests
 from django.conf import settings
+from django.core.management import call_command
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_GET
 
 from . import llm, news, scraping
 from .models import Player, RosterEvent, Team
@@ -181,3 +186,21 @@ def player_news(request, player_id):
             "llm_model": settings.GROQ_MODEL,
         },
     )
+
+
+@require_GET
+def trigger_sync(request):
+    """외부 무료 크론 서비스(cron-job.org 등)가 매일 호출해 sync_roster를 실행시키는 엔드포인트.
+
+    Render 무료 티어에는 Shell/Cron 기능이 없어, DB 접근 없이 URL 호출만으로 동기화를
+    트리거할 수 있도록 만들었다. SYNC_SECRET_TOKEN이 설정되지 않았거나 토큰이 일치하지
+    않으면 접근을 거부한다.
+    """
+    expected = settings.SYNC_SECRET_TOKEN
+    provided = request.GET.get("token", "")
+    if not expected or not hmac.compare_digest(expected, provided):
+        return HttpResponseForbidden("forbidden")
+
+    buffer = io.StringIO()
+    call_command("sync_roster", stdout=buffer, stderr=buffer)
+    return HttpResponse(buffer.getvalue() or "sync_roster 완료", content_type="text/plain")
