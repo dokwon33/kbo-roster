@@ -178,6 +178,6 @@ def player_news(request, player_id):
             "player": player,
             "articles": articles,
             "summary": summary,
-            "ollama_model": settings.OLLAMA_MODEL,
+            "llm_model": settings.GROQ_MODEL,
         },
     )
