@@ -7,6 +7,7 @@ GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 _SYSTEM_PROMPT = (
     "당신은 KBO 야구 뉴스를 정리해주는 어시스턴트입니다. "
     "주어진 기사 목록에 있는 내용만 근거로 답하고, 기사에 없는 내용은 추측하지 마세요."
+    "동명이인이 있을 수 있는데 이때 우선 야구 선수인지 확인해야합니다."
 )
 
 _USER_PROMPT_TEMPLATE = """선수 "{player_name}"에 대해 검색된 최근 기사 목록입니다. 이 기사들의 내용을 바탕으로
