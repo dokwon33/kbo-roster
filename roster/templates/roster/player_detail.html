@@ -23,6 +23,12 @@
   }
   .player-meta-grid .meta-label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 2px; }
   .player-meta-grid .meta-value { color: #1c1e21; font-weight: 600; }
+  .news-link-btn {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+    background: #14213d; color: #fff; text-decoration: none;
+    font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px;
+  }
+  .news-link-btn:hover { background: #1e3a8a; }
 
   .section-card { margin-bottom: 24px; }
   .section-card h3 {
@@ -87,6 +93,7 @@
           <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
         </div>
       </div>
+      <a class="news-link-btn" href="{% url 'roster:player_news' player.id %}">📰 관련 뉴스/이슈 보기</a>
     </div>
   </div>
 
