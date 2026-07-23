@@ -63,3 +63,24 @@ def streak_class(streak):
     if streak.endswith("패"):
         return "streak-loss"
     return ""
+
+
+_POSTSEASON = {
+    "1": ("한국시리즈 직행", "ps-ks"),
+    "2": ("플레이오프 진출", "ps-po"),
+    "3": ("준플레이오프 진출", "ps-spo"),
+    "4": ("와일드카드 결정전 진출", "ps-wc"),
+    "5": ("와일드카드 결정전 진출", "ps-wc"),
+}
+
+
+@register.filter
+def postseason_label(rank):
+    entry = _POSTSEASON.get(str(rank))
+    return entry[0] if entry else ""
+
+
+@register.filter
+def postseason_class(rank):
+    entry = _POSTSEASON.get(str(rank))
+    return entry[1] if entry else ""
