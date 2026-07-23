@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import requests
 from django.shortcuts import get_object_or_404, render
 
@@ -109,3 +111,50 @@ def standings(request):
         "roster/standings.html",
         {"standings_1gun": standings_1gun, "standings_2gun": standings_2gun},
     )
+
+
+def attendance_stats(request):
+    try:
+        rows = scraping.fetch_attendance_rows()
+    except requests.RequestException:
+        rows = []
+
+    home_rows = [r for r in rows if r.capacity]
+
+    team_stats = []
+    for team in sorted({r.home for r in home_rows}):
+        team_rows = [r for r in home_rows if r.home == team]
+
+        by_weekday = defaultdict(list)
+        by_opponent = defaultdict(list)
+        for r in team_rows:
+            by_weekday[r.weekday].append(r.sellout_rate)
+            by_opponent[r.away].append(r.sellout_rate)
+
+        weekday_stats = [
+            {"weekday": wd, "avg_rate": 100 * sum(rates) / len(rates), "games": len(rates)}
+            for wd in scraping.WEEKDAY_ORDER
+            if (rates := by_weekday.get(wd))
+        ]
+        opponent_stats = sorted(
+            (
+                {"opponent": opp, "avg_rate": 100 * sum(rates) / len(rates), "games": len(rates)}
+                for opp, rates in by_opponent.items()
+            ),
+            key=lambda x: -x["avg_rate"],
+        )
+
+        team_stats.append(
+            {
+                "team": team,
+                "stadium": team_rows[0].stadium,
+                "total_games": len(team_rows),
+                "avg_rate": 100 * sum(r.sellout_rate for r in team_rows) / len(team_rows),
+                "weekday_stats": weekday_stats,
+                "opponent_stats": opponent_stats,
+            }
+        )
+
+    team_stats.sort(key=lambda x: -x["avg_rate"])
+
+    return render(request, "roster/attendance_stats.html", {"team_stats": team_stats})
