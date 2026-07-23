@@ -40,12 +40,12 @@
     <div class="summary-card">
       <h3>AI 요약</h3>
       <p>{{ summary }}</p>
-      <p class="summary-note">※ 로컬 오픈소스 LLM({{ ollama_model|default:"qwen2.5:7b-instruct" }})이 아래 기사 목록만 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+      <p class="summary-note">※ 오픈소스 LLM({{ llm_model }})이 아래 기사 목록만 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
     </div>
   {% elif articles %}
     <div class="summary-card">
       <h3>AI 요약</h3>
-      <p style="color:#64748b;">요약을 생성하지 못했습니다 (로컬 LLM 서버 확인 필요). 아래 기사 목록은 정상적으로 확인됩니다.</p>
+      <p style="color:#64748b;">요약 기능은 준비 중입니다 (GROQ_API_KEY 미설정 또는 요청 실패). 아래 기사 목록은 정상적으로 확인됩니다.</p>
     </div>
   {% endif %}
 

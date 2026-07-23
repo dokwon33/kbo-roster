@@ -4,16 +4,17 @@ KBO 선수들의 1군 등록 / 2군 말소 / 부상 등 상태 변화를 추적�
 KBO 공식 사이트에서 등록/말소 현황을 매일 자동으로 수집하고, 사유(부상 부위 등)는 추후 각 구단
 SNS·미디어를 참조해 반영할 수 있는 구조로 되어 있다. 1군/2군(북부·남부) 리그 순위, 구장별 좌석
 매진율 통계도 KBO 공식 사이트에서 실시간으로 가져와 보여주고, 선수 관련 최신 뉴스는 네이버 뉴스
-검색 API로 수집해 로컬 LLM이 요약해준다.
+검색 API로 수집해 Groq 호스팅 오픈소스 LLM이 요약해준다.
 
 ## 기술 스택
 
 - Python 3.11 / Django 5.2 (서버 렌더링 템플릿)
-- SQLite (개발용 기본 DB)
+- SQLite(로컬 개발용) / PostgreSQL(배포용, `DATABASE_URL` 환경변수로 자동 전환)
 - requests + BeautifulSoup(lxml) — KBO 공식 사이트 스크래핑
 - 네이버 뉴스 검색 API — 선수 관련 기사 수집
-- Ollama(로컬 오픈소스 LLM, `qwen2.5:7b-instruct`) — 수집된 기사 요약/설명 생성
+- Groq API(오픈소스 모델 `llama-3.3-70b-versatile` 호스팅) — 수집된 기사 요약/설명 생성
 - python-dotenv — `.env` 파일로 API 키 등 민감 설정 분리
+- gunicorn + whitenoise — 배포 환경 WSGI 서버 및 정적 파일 서빙
 
 ## 프로젝트 구조
 
@@ -24,7 +25,7 @@ kbo-roster/
 │   ├── models.py             # Team, Player, RosterEvent
 │   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx, TeamRank.aspx, GraphDaily.aspx 등) 파서
 │   ├── news.py               # 네이버 뉴스 검색 API로 선수 관련 기사 수집
-│   ├── llm.py                 # 로컬 Ollama 호출 — 기사 목록 기반 요약 생성
+│   ├── llm.py                 # Groq API 호출 — 기사 목록 기반 요약 생성
 │   ├── admin.py              # 관리자 화면 (선수/이벤트 CRUD, 사유 수동 기재)
 │   ├── views.py / urls.py    # 대시보드 뷰
 │   ├── templates/roster/     # 팀별 현황, 리그 순위, 매진율 통계, 선수 상세/뉴스, 최근 변동 페이지
@@ -84,15 +85,16 @@ kbo-roster/
   (`openapi.naver.com/v1/search/news.json`)로 선수 이름을 최신순 검색해 기사 목록(제목/요약/
   링크/날짜)을 가져온다. API 키(`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`)는 `.env`에 보관하고
   `config/settings.py`가 `python-dotenv`로 읽어들인다 (`.env`는 git에 커밋되지 않음).
-- `roster/llm.py`의 `summarize_player_news`가 위 기사 목록만 프롬프트에 담아 로컬 Ollama
-  (`qwen2.5:7b-instruct`)에 요청, "기사에 없는 내용은 추측하지 말 것"을 명시해 사실 기반 3~5문장
-  요약을 생성한다. 출처가 불분명한 SNS/커뮤니티가 아니라 뉴스 API 결과만 입력으로 쓰기 때문에,
+- `roster/llm.py`의 `summarize_player_news`가 위 기사 목록만 프롬프트에 담아 Groq API
+  (`llama-3.3-70b-versatile`, OpenAI 호환 `/chat/completions` 엔드포인트)에 요청,
+  "기사에 없는 내용은 추측하지 말 것"을 시스템 프롬프트로 명시해 사실 기반 3~5문장 요약을
+  생성한다. 출처가 불분명한 SNS/커뮤니티가 아니라 뉴스 API 결과만 입력으로 쓰기 때문에,
   LLM이 근거 없는 내용을 지어낼 여지를 최소화했다.
 - 선수 상세 페이지(`/players/<id>/`)의 "📰 관련 뉴스/이슈 보기" 버튼을 누르면 별도 페이지
-  (`/players/<id>/news/`)에서 AI 요약과 원문 기사 링크 목록을 보여준다. LLM 응답에 몇 초에서
-  십수 초가 걸릴 수 있어 선수 상세 페이지 로딩과는 분리했다.
-- 로컬 실행 시 Ollama가 떠 있어야 한다: `brew services start ollama` (또는
-  `ollama serve`) 후 `ollama pull qwen2.5:7b-instruct`.
+  (`/players/<id>/news/`)에서 AI 요약과 원문 기사 링크 목록을 보여준다.
+- 원래는 로컬 Ollama(`qwen2.5:7b-instruct`)로 구현했으나, 배포 환경에는 상시 로컬 LLM 서버를
+  둘 수 없어 Groq 호스팅 API로 교체했다 — 코드 구조(기사 목록만 근거로 요약, 사실 아닌 내용
+  추측 금지)는 동일하게 유지했다.
 
 ## 동기화 커맨드 & diff 로직
 
@@ -142,21 +144,49 @@ python manage.py sync_roster       # 최초 데이터 수집
 python manage.py runserver
 ```
 
-선수 뉴스 요약 기능까지 쓰려면 추가로:
+선수 뉴스 요약 기능까지 쓰려면 프로젝트 루트에 `.env` 파일을 만들어 아래 값을 채운다
+(`.env`는 `.gitignore`에 포함되어 git에는 올라가지 않는다):
 
-```bash
-# 프로젝트 루트에 .env 파일 생성 (git에는 안 올라감)
-echo "NAVER_CLIENT_ID=발급받은_클라이언트_ID" >> .env
-echo "NAVER_CLIENT_SECRET=발급받은_시크릿" >> .env
-
-brew install ollama
-brew services start ollama
-ollama pull qwen2.5:7b-instruct
+```
+NAVER_CLIENT_ID=발급받은_클라이언트_ID
+NAVER_CLIENT_SECRET=발급받은_시크릿
+GROQ_API_KEY=발급받은_Groq_API_키
 ```
 
-네이버 API 키는 [네이버 개발자센터](https://developers.naver.com)에서 애플리케이션을 등록하면
-발급받을 수 있다. `.env`가 없거나 Ollama가 꺼져 있어도 다른 기능(리그 순위, 매진율 통계 등)은
-정상 동작하며, 뉴스 페이지만 "요약을 생성하지 못했습니다"로 표시된다.
+- 네이버 API 키: [네이버 개발자센터](https://developers.naver.com)에서 애플리케이션 등록 후 발급
+- Groq API 키: [console.groq.com](https://console.groq.com)에서 무료 가입 후 발급
+
+`.env`가 없거나 키가 비어 있어도 다른 기능(리그 순위, 매진율 통계 등)은 정상 동작하며, 뉴스
+페이지만 요약 없이 기사 목록만 보여준다.
+
+## 배포 (Render / Railway 등 PaaS)
+
+이 앱은 `DEBUG`/`SECRET_KEY`/`ALLOWED_HOSTS`/`DATABASE_URL` 등을 전부 환경변수로 읽도록
+되어 있어 별도 코드 수정 없이 PaaS에 올릴 수 있다.
+
+**필요한 환경변수:**
+
+| 변수 | 값 | 비고 |
+|---|---|---|
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(50))"`로 생성 | 로컬 개발용 키 그대로 쓰지 말 것 |
+| `DEBUG` | `False` | 배포 환경에서는 반드시 False |
+| `ALLOWED_HOSTS` | 예: `kbo-roster.onrender.com` | 콤마로 여러 개 구분 가능 |
+| `CSRF_TRUSTED_ORIGINS` | 예: `https://kbo-roster.onrender.com` | 스킴(`https://`) 포함 필수 |
+| `DATABASE_URL` | Render/Railway가 Postgres 애드온 생성 시 자동 주입 | 없으면 SQLite로 폴백(배포에는 비권장 — 재배포 시 데이터 유실) |
+| `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 발급받은 값 | 뉴스 수집용 |
+| `GROQ_API_KEY` | 발급받은 값 | AI 요약용 |
+
+**배포 절차 (Render 기준):**
+1. GitHub 저장소(`main` 브랜치)를 Render에 연결해 새 Web Service 생성
+2. Build Command: `pip install -r requirements.txt && python manage.py collectstatic --noinput`
+3. Start Command: `gunicorn config.wsgi --log-file -` (`Procfile`에도 동일하게 정의되어 있음)
+4. 위 표의 환경변수를 모두 등록
+5. Postgres 인스턴스를 하나 추가로 만들어 `DATABASE_URL`을 연결(SQLite는 배포 파일시스템이
+   재시작/재배포마다 초기화되는 PaaS 특성상 데이터가 날아갈 수 있어 배포에는 적합하지 않음)
+6. 첫 배포 후 `python manage.py createsuperuser`를 Render 쉘(또는 One-off Job)에서 실행해
+   관리자 계정 생성
+
+Railway도 동일한 방식이며, `Procfile`의 `release:`/`web:` 커맨드를 그대로 인식한다.
 
 ## 알려진 제약 / 향후 과제
 

@@ -7,3 +7,4 @@ SECURITY_TODO.md
 .DS_Store
 .vscode/
 .env
+staticfiles/
