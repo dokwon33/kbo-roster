@@ -26,7 +26,6 @@ kbo-roster/
 │   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx, TeamRank.aspx, GraphDaily.aspx 등) 파서
 │   ├── news.py               # 네이버 뉴스 검색 API로 선수 관련 기사 수집
 │   ├── llm.py                 # Groq API 호출 — 기사 목록 기반 요약 생성
-│   ├── admin.py              # 관리자 화면 (선수/이벤트 CRUD, 사유 수동 기재)
 │   ├── views.py / urls.py    # 대시보드 뷰
 │   ├── templates/roster/     # 팀별 현황, 리그 순위, 매진율 통계, 선수 상세/뉴스, 최근 변동 페이지
 │   ├── templatetags/         # 상태 뱃지 · 구단 로고 · 연속 승패 표시용 템플릿 필터
@@ -48,13 +47,14 @@ kbo-roster/
 - **RosterEvent**: 선수별 상태 변화 이력. 한 선수가 여러 건을 가질 수 있고, 최신 `event_date`
   기준 레코드가 "현재 상태"(`Player.current_status`)가 된다.
   - `event_type`: 1군 등록 / 2군 말소 / 부상자 명단 / 군 입대·전역 / 출장 정지 / 방출·은퇴 / 기타
-  - `reason`, `note`: 부상 부위 등 KBO 공식 페이지에 없는 사유. 현재는 관리자 화면에서 수동
-    기재하며, 추후 미디어/SNS 수집 파이프라인이 채워 넣을 수 있도록 필드를 분리해 두었다.
+  - `reason`, `note`: 부상 부위 등 KBO 공식 페이지에 없는 사유. 현재는 관리자 기능이 없어
+    Django 쉘(`python manage.py shell`)로 직접 기재하며, 추후 미디어/SNS 수집 파이프라인이
+    채워 넣을 수 있도록 필드를 분리해 두었다.
   - `source`: `SCRAPER`(KBO 공식 자동 수집) / `MANUAL`(수동 입력) / `MEDIA`(미디어·SNS 수집)
   - `source_name`, `source_url`: 사유의 출처(예: "한화 이글스 공식 SNS")와 원문 링크.
     구단 SNS 등 미디어 기반 수집을 붙일 때, 새 스크래퍼가 이 두 필드와 `source=MEDIA`,
-    `reason`을 채워 `RosterEvent`를 생성/갱신하기만 하면 기존 모델·화면·관리자 UI를 그대로
-    재사용할 수 있다. (현재는 이 수집기 자체는 구현되어 있지 않고, 확장 지점만 마련한 상태.)
+    `reason`을 채워 `RosterEvent`를 생성/갱신하기만 하면 기존 모델·화면을 그대로 재사용할 수
+    있다. (현재는 이 수집기 자체는 구현되어 있지 않고, 확장 지점만 마련한 상태.)
 
 ## 데이터 수집 (스크래핑)
 
@@ -130,7 +130,9 @@ crontab에 등록되어 있다:
 - `/standings/` — 리그 순위: 1군 전체 순위(포스트시즌 진출 표기 포함) + 2군 퓨처스 북부/남부 순위
 - `/attendance/` — 구단별 좌석 매진율 통계: 팀별 전체 평균, 요일별/상대구단별 평균 매진율
 - `/events/` — 최근 등록/말소 변동 최신 100건
-- `/admin/` — Django 관리자: 선수/이벤트 CRUD, 사유·출처 수동 기재
+
+Django 관리자 화면(`/admin/`)은 사용하지 않는다 — 데이터 수동 조작이 필요하면
+`python manage.py shell`로 직접 처리한다.
 
 ## 로컬 실행
 
@@ -139,7 +141,6 @@ cd ~/kbo-roster
 source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py createsuperuser   # 관리자 계정이 아직 없다면
 python manage.py sync_roster       # 최초 데이터 수집
 python manage.py runserver
 ```
@@ -183,14 +184,15 @@ GROQ_API_KEY=발급받은_Groq_API_키
 4. 위 표의 환경변수를 모두 등록
 5. Postgres 인스턴스를 하나 추가로 만들어 `DATABASE_URL`을 연결(SQLite는 배포 파일시스템이
    재시작/재배포마다 초기화되는 PaaS 특성상 데이터가 날아갈 수 있어 배포에는 적합하지 않음)
-6. 첫 배포 후 `python manage.py createsuperuser`를 Render 쉘(또는 One-off Job)에서 실행해
-   관리자 계정 생성
 
 Railway도 동일한 방식이며, `Procfile`의 `release:`/`web:` 커맨드를 그대로 인식한다.
 
 ## 알려진 제약 / 향후 과제
 
-- 선수 식별이 이름 기반이라, 동명이인이 실제로 발생하면 관리자 화면에서 수동으로 분리해야 한다.
+- 선수 식별이 이름 기반이라, 동명이인이 실제로 발생하면 Django 쉘에서 수동으로 분리해야 한다.
+- 관리자 화면(`django.contrib.admin`)은 현재 필요 없어 제거했다 — 데이터 CRUD가 다시
+  필요해지면 `INSTALLED_APPS`에 `'django.contrib.admin'`을 되돌리고 `config/urls.py`에
+  `path('admin/', admin.site.urls)`를, `roster/admin.py`에 모델 등록을 다시 추가하면 된다.
 - 부상 부위 등 상세 사유는 아직 자동 수집기가 없다 — 구단 SNS/미디어 파서를 추가할 때는
   `RosterEvent(source=RosterEvent.SOURCE_MEDIA, reason=..., source_name=..., source_url=...)`
   형태로 채워 넣으면 기존 화면·모델 변경 없이 바로 반영된다.
