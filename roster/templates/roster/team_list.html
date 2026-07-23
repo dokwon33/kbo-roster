@@ -1,7 +1,98 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
 {% block title %}구단별 1군/2군 변동 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .latest-games-section { margin-bottom: 28px; }
+  .latest-games-section h2 {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 18px; color: #14213d; margin: 0 0 10px;
+  }
+  .latest-games-section h2 .game-date {
+    font-size: 13px; font-weight: normal; color: #64748b;
+  }
+  .game-results-strip {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .game-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 12px 14px;
+  }
+  .game-card .matchup { display: flex; flex-direction: column; gap: 6px; }
+  .game-card .side { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .game-card .side-team { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+  .game-card .side-score { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .game-card .side.winner .side-team, .game-card .side.winner .side-score { font-weight: 700; color: #14213d; }
+  .game-card .side.loser .side-team, .game-card .side.loser .side-score { color: #94a3b8; }
+  .game-card .game-meta {
+    margin-top: 8px; font-size: 12px; color: #64748b; border-top: 1px solid #f0f1f3; padding-top: 8px;
+  }
+  .game-card .cancel-badge {
+    display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 999px;
+    font-size: 12px; background: #fee2e2; color: #991b1b;
+  }
+  .no-games-note { color: #64748b; font-size: 14px; }
+</style>
+{% endblock %}
+
 {% block content %}
+  <div class="latest-games-section">
+    <h2>
+      최근 경기 결과
+      {% if latest_game_date %}<span class="game-date">{{ latest_game_date|date:"Y.m.d" }}</span>{% endif %}
+    </h2>
+    <div class="game-results-strip">
+      {% for game in latest_games %}
+        <div class="game-card">
+          {% if game.is_cancelled %}
+            <div class="matchup">
+              <div class="side">
+                <span class="side-team">
+                  {% with logo=game.away_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
+                  {{ game.away_team }}
+                </span>
+              </div>
+              <div class="side">
+                <span class="side-team">
+                  {% with logo=game.home_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
+                  {{ game.home_team }}
+                </span>
+              </div>
+            </div>
+            <span class="cancel-badge">{{ game.cancel_reason|default:"경기 취소" }}</span>
+          {% else %}
+            <div class="matchup">
+              <div class="side {% if game.away_score > game.home_score %}winner{% elif game.away_score < game.home_score %}loser{% endif %}">
+                <span class="side-team">
+                  {% with logo=game.away_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
+                  {{ game.away_team }}
+                </span>
+                <span class="side-score">{{ game.away_score }}</span>
+              </div>
+              <div class="side {% if game.home_score > game.away_score %}winner{% elif game.home_score < game.away_score %}loser{% endif %}">
+                <span class="side-team">
+                  {% with logo=game.home_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
+                  {{ game.home_team }}
+                </span>
+                <span class="side-score">{{ game.home_score }}</span>
+              </div>
+            </div>
+            <div class="game-meta">
+              {{ game.stadium }} -
+              {% if game.win_pitcher %} 승리: {{ game.win_pitcher }}{% endif %}/
+              {% if game.save_pitcher %} 세이브: {{ game.save_pitcher }}/{% endif %}
+              {% if game.lose_pitcher %} 패배: {{ game.lose_pitcher }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="no-games-note">최근 경기 결과를 불러올 수 없습니다.</p>
+      {% endfor %}
+    </div>
+  </div>
+
   <h2>구단별 1군/2군 변동</h2>
   <div class="grid">
     {% for card in cards %}

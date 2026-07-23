@@ -283,6 +283,99 @@ def fetch_standings_2gun() -> list:
     return rows
 
 
+GAME_DATE_URL = "https://www.koreabaseball.com/ws/Main.asmx/GetKboGameDate"
+GAME_LIST_URL = "https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList"
+GAME_CENTER_REFERER = "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
+GAME_SERIES_IDS = "0,1,3,4,5,6,7,9"  # 1군 정규시즌 + 시범경기 등 전체 시리즈
+
+GAME_STATE_ENDED = "3"
+GAME_STATE_CANCELLED = "4"
+
+
+@dataclass
+class GameResult:
+    game_id: str
+    away_team: str
+    home_team: str
+    away_score: int
+    home_score: int
+    state: str  # GAME_STATE_SC: "3"=경기종료, "4"=취소 등
+    cancel_reason: str
+    stadium: str
+    win_pitcher: str
+    lose_pitcher: str
+    save_pitcher: str
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self.state == GAME_STATE_CANCELLED
+
+    @property
+    def is_ended(self) -> bool:
+        return self.state == GAME_STATE_ENDED
+
+
+def _game_center_post(url: str, date_str: str) -> dict:
+    resp = requests.post(
+        url,
+        data={"leId": "1", "srId": GAME_SERIES_IDS, "date": date_str},
+        headers={
+            **HEADERS,
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": GAME_CENTER_REFERER,
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_previous_game_date(target: date) -> date | None:
+    """target 기준으로 경기가 있었던 직전 날짜를 가져온다 (휴식일은 자동으로 건너뛴다)."""
+    data = _game_center_post(GAME_DATE_URL, target.strftime("%Y%m%d"))
+    before = data.get("BEFORE_G_DT")
+    if not before:
+        return None
+    return datetime.strptime(before, "%Y%m%d").date()
+
+
+def fetch_games_for_date(target: date) -> list:
+    """해당 날짜에 열린(예정이었던) 모든 경기 결과를 가져온다."""
+    data = _game_center_post(GAME_LIST_URL, target.strftime("%Y%m%d"))
+    games = []
+    for g in data.get("game", []):
+        games.append(
+            GameResult(
+                game_id=g.get("G_ID", ""),
+                away_team=g.get("AWAY_NM", ""),
+                home_team=g.get("HOME_NM", ""),
+                away_score=int(g.get("T_SCORE_CN") or 0),
+                home_score=int(g.get("B_SCORE_CN") or 0),
+                state=g.get("GAME_STATE_SC", ""),
+                cancel_reason=g.get("CANCEL_SC_NM", ""),
+                stadium=g.get("S_NM", ""),
+                win_pitcher=(g.get("W_PIT_P_NM") or "").strip(),
+                lose_pitcher=(g.get("L_PIT_P_NM") or "").strip(),
+                save_pitcher=(g.get("SV_PIT_P_NM") or "").strip(),
+            )
+        )
+    return games
+
+
+def fetch_latest_game_results(today: date | None = None):
+    """오늘 기준 가장 최근에 경기가 열렸던 날짜와 그 날의 전체 경기 결과를 가져온다.
+
+    KBO 공식 사이트가 계산하는 "직전 경기일"(BEFORE_G_DT)을 그대로 사용하므로,
+    월요일처럼 경기가 없는 날은 자동으로 건너뛴다.
+    """
+    today = today or date.today()
+    prev_date = fetch_previous_game_date(today)
+    if prev_date is None:
+        return None, []
+    return prev_date, fetch_games_for_date(prev_date)
+
+
 @dataclass
 class RosterPeriod:
     team: str
