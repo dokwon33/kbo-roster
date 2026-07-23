@@ -1,0 +1,65 @@
+{% extends "roster/base.html" %}
+{% block title %}{{ player.name }} 관련 뉴스 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: #64748b; text-decoration: none; font-size: 13px; margin-bottom: 12px;
+  }
+  .back-link:hover { color: #14213d; }
+
+  .summary-card {
+    background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px;
+    padding: 16px 18px; margin-bottom: 24px;
+  }
+  .summary-card h3 { margin: 0 0 8px; font-size: 14px; color: #3730a3; }
+  .summary-card p { margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; }
+  .summary-note { font-size: 12px; color: #6366f1; margin-top: 8px; }
+
+  .article-list { display: flex; flex-direction: column; gap: 12px; }
+  .article-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 14px 16px;
+  }
+  .article-card a.article-title {
+    font-size: 15px; font-weight: 600; color: #14213d; text-decoration: none;
+  }
+  .article-card a.article-title:hover { text-decoration: underline; }
+  .article-card .article-desc { font-size: 13px; color: #475569; margin: 6px 0 0; line-height: 1.5; }
+  .article-card .article-date { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+  .empty-state { color: #94a3b8; padding: 30px; text-align: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <a class="back-link" href="{% url 'roster:player_detail' player.id %}">&larr; {{ player.name }}</a>
+  <h1 style="font-size:20px; color:#14213d; margin-bottom:16px;">📰 {{ player.name }} 관련 뉴스</h1>
+
+  {% if summary %}
+    <div class="summary-card">
+      <h3>AI 요약</h3>
+      <p>{{ summary }}</p>
+      <p class="summary-note">※ 로컬 오픈소스 LLM({{ ollama_model|default:"qwen2.5:7b-instruct" }})이 아래 기사 목록만 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+    </div>
+  {% elif articles %}
+    <div class="summary-card">
+      <h3>AI 요약</h3>
+      <p style="color:#64748b;">요약을 생성하지 못했습니다 (로컬 LLM 서버 확인 필요). 아래 기사 목록은 정상적으로 확인됩니다.</p>
+    </div>
+  {% endif %}
+
+  {% if articles %}
+    <div class="article-list">
+      {% for article in articles %}
+        <div class="article-card">
+          <a class="article-title" href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a>
+          <p class="article-desc">{{ article.description }}</p>
+          <p class="article-date">{{ article.pub_date }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">관련 기사를 찾을 수 없습니다.</div>
+  {% endif %}
+{% endblock %}

@@ -1,9 +1,10 @@
 from collections import defaultdict
 
 import requests
+from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 
-from . import scraping
+from . import llm, news, scraping
 from .models import Player, RosterEvent, Team
 
 # 방금 어느 리그에서 옮겨왔는지에 따라 반대편 리그 성적을 보여준다.
@@ -158,3 +159,25 @@ def attendance_stats(request):
     team_stats.sort(key=lambda x: -x["avg_rate"])
 
     return render(request, "roster/attendance_stats.html", {"team_stats": team_stats})
+
+
+def player_news(request, player_id):
+    player = get_object_or_404(Player, pk=player_id)
+
+    try:
+        articles = news.fetch_player_news(player.name)
+    except requests.RequestException:
+        articles = []
+
+    summary = llm.summarize_player_news(player.name, articles) if articles else None
+
+    return render(
+        request,
+        "roster/player_news.html",
+        {
+            "player": player,
+            "articles": articles,
+            "summary": summary,
+            "ollama_model": settings.OLLAMA_MODEL,
+        },
+    )

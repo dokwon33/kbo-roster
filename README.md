@@ -2,14 +2,18 @@
 
 KBO 선수들의 1군 등록 / 2군 말소 / 부상 등 상태 변화를 추적하는 Django 웹 애플리케이션.
 KBO 공식 사이트에서 등록/말소 현황을 매일 자동으로 수집하고, 사유(부상 부위 등)는 추후 각 구단
-SNS·미디어를 참조해 반영할 수 있는 구조로 되어 있다. 1군/2군(북부·남부) 리그 순위도 KBO 공식
-사이트에서 실시간으로 가져와 보여준다.
+SNS·미디어를 참조해 반영할 수 있는 구조로 되어 있다. 1군/2군(북부·남부) 리그 순위, 구장별 좌석
+매진율 통계도 KBO 공식 사이트에서 실시간으로 가져와 보여주고, 선수 관련 최신 뉴스는 네이버 뉴스
+검색 API로 수집해 로컬 LLM이 요약해준다.
 
 ## 기술 스택
 
 - Python 3.11 / Django 5.2 (서버 렌더링 템플릿)
 - SQLite (개발용 기본 DB)
 - requests + BeautifulSoup(lxml) — KBO 공식 사이트 스크래핑
+- 네이버 뉴스 검색 API — 선수 관련 기사 수집
+- Ollama(로컬 오픈소스 LLM, `qwen2.5:7b-instruct`) — 수집된 기사 요약/설명 생성
+- python-dotenv — `.env` 파일로 API 키 등 민감 설정 분리
 
 ## 프로젝트 구조
 
@@ -18,10 +22,12 @@ kbo-roster/
 ├── config/                  # Django 프로젝트 설정 (settings, urls)
 ├── roster/                  # 메인 앱
 │   ├── models.py             # Team, Player, RosterEvent
-│   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx, TeamRank.aspx 등) 파서
+│   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx, TeamRank.aspx, GraphDaily.aspx 등) 파서
+│   ├── news.py               # 네이버 뉴스 검색 API로 선수 관련 기사 수집
+│   ├── llm.py                 # 로컬 Ollama 호출 — 기사 목록 기반 요약 생성
 │   ├── admin.py              # 관리자 화면 (선수/이벤트 CRUD, 사유 수동 기재)
 │   ├── views.py / urls.py    # 대시보드 뷰
-│   ├── templates/roster/     # 팀별 현황, 리그 순위, 선수 상세, 최근 변동 페이지
+│   ├── templates/roster/     # 팀별 현황, 리그 순위, 매진율 통계, 선수 상세/뉴스, 최근 변동 페이지
 │   ├── templatetags/         # 상태 뱃지 · 구단 로고 · 연속 승패 표시용 템플릿 필터
 │   └── management/commands/
 │       └── sync_roster.py    # 스크래핑 결과를 DB에 반영하는 커맨드
@@ -66,6 +72,27 @@ kbo-roster/
 - 구단 로고는 KBO 이미지 CDN의 엠블럼 URL(`emblemBF_{팀코드}.png`)을 팀명→코드 매핑으로
   조합해 사용한다 (`roster/templatetags/roster_extras.py`의 `team_logo_url` 필터). 1군 10개
   구단 외에 2군 전용 팀명(고양→키움 2군, 상무, 울산)도 매핑해 두었다.
+- 구장별 좌석 매진율은 `Record/Crowd/GraphDaily.aspx`(일자별 관중 현황: 날짜/요일/홈/원정/구장/
+  관중수)에서 시즌 전체 데이터를 한 번에 가져온 뒤, `scraping.STADIUM_CAPACITY`에 직접 정리해둔
+  구장별 좌석 수(관중수 ÷ 좌석 수)로 매진율을 계산한다. KBO가 좌석 수 자체는 제공하지 않기 때문에
+  정적 테이블로 관리하며, 삼성이 가끔 치르는 포항 경기처럼 이 표에 없는 구장은 자동으로 집계에서
+  제외된다.
+
+## 선수 관련 뉴스 · AI 요약
+
+- `roster/news.py`의 `fetch_player_news(player_name)`이 네이버 뉴스 검색 API
+  (`openapi.naver.com/v1/search/news.json`)로 선수 이름을 최신순 검색해 기사 목록(제목/요약/
+  링크/날짜)을 가져온다. API 키(`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`)는 `.env`에 보관하고
+  `config/settings.py`가 `python-dotenv`로 읽어들인다 (`.env`는 git에 커밋되지 않음).
+- `roster/llm.py`의 `summarize_player_news`가 위 기사 목록만 프롬프트에 담아 로컬 Ollama
+  (`qwen2.5:7b-instruct`)에 요청, "기사에 없는 내용은 추측하지 말 것"을 명시해 사실 기반 3~5문장
+  요약을 생성한다. 출처가 불분명한 SNS/커뮤니티가 아니라 뉴스 API 결과만 입력으로 쓰기 때문에,
+  LLM이 근거 없는 내용을 지어낼 여지를 최소화했다.
+- 선수 상세 페이지(`/players/<id>/`)의 "📰 관련 뉴스/이슈 보기" 버튼을 누르면 별도 페이지
+  (`/players/<id>/news/`)에서 AI 요약과 원문 기사 링크 목록을 보여준다. LLM 응답에 몇 초에서
+  십수 초가 걸릴 수 있어 선수 상세 페이지 로딩과는 분리했다.
+- 로컬 실행 시 Ollama가 떠 있어야 한다: `brew services start ollama` (또는
+  `ollama serve`) 후 `ollama pull qwen2.5:7b-instruct`.
 
 ## 동기화 커맨드 & diff 로직
 
@@ -94,10 +121,12 @@ crontab에 등록되어 있다:
 
 ## 대시보드 (웹 화면)
 
-- `/` — 구단별 카드 뷰: 팀별 1군 등록 인원과 목록 (구단 로고 표시)
+- `/` — 구단별 카드 뷰: 팀별 1군 등록 인원과 목록 (구단 로고 표시), 직전 경기일 결과
 - `/teams/<id>/` — 팀 상세: 1군 등록 / 2군·기타 인원 목록
 - `/players/<id>/` — 선수 상세: 현재 상태 + 전체 이력 타임라인(사유·출처 링크 포함)
-- `/standings/` — 리그 순위: 1군 전체 순위 + 2군 퓨처스 북부/남부 순위 (구단 로고, 연승/연패 색상 표시)
+- `/players/<id>/news/` — 선수 관련 최신 뉴스 + AI 요약
+- `/standings/` — 리그 순위: 1군 전체 순위(포스트시즌 진출 표기 포함) + 2군 퓨처스 북부/남부 순위
+- `/attendance/` — 구단별 좌석 매진율 통계: 팀별 전체 평균, 요일별/상대구단별 평균 매진율
 - `/events/` — 최근 등록/말소 변동 최신 100건
 - `/admin/` — Django 관리자: 선수/이벤트 CRUD, 사유·출처 수동 기재
 
@@ -113,6 +142,22 @@ python manage.py sync_roster       # 최초 데이터 수집
 python manage.py runserver
 ```
 
+선수 뉴스 요약 기능까지 쓰려면 추가로:
+
+```bash
+# 프로젝트 루트에 .env 파일 생성 (git에는 안 올라감)
+echo "NAVER_CLIENT_ID=발급받은_클라이언트_ID" >> .env
+echo "NAVER_CLIENT_SECRET=발급받은_시크릿" >> .env
+
+brew install ollama
+brew services start ollama
+ollama pull qwen2.5:7b-instruct
+```
+
+네이버 API 키는 [네이버 개발자센터](https://developers.naver.com)에서 애플리케이션을 등록하면
+발급받을 수 있다. `.env`가 없거나 Ollama가 꺼져 있어도 다른 기능(리그 순위, 매진율 통계 등)은
+정상 동작하며, 뉴스 페이지만 "요약을 생성하지 못했습니다"로 표시된다.
+
 ## 알려진 제약 / 향후 과제
 
 - 선수 식별이 이름 기반이라, 동명이인이 실제로 발생하면 관리자 화면에서 수동으로 분리해야 한다.
@@ -122,3 +167,8 @@ python manage.py runserver
 - 트레이드로 팀이 바뀌는 경우 `Player.team`은 최신 값으로 갱신되지만, 과거 각 `RosterEvent`에는
   당시 소속팀이 그대로 남아 있어 이력 조회 시 참고할 수 있다.
 - 경기결과(시즌 전체 일정/과거 이력) 조회는 아직 구현되어 있지 않다 — 다음 작업으로 예정.
+- 선수 뉴스 AI 요약은 네이버 뉴스 검색 결과에 잡히는 기사만 근거로 삼는다. 검색 결과 자체가
+  부실하거나(동명이인 뉴스 혼입 등) 편향된 경우 요약 품질도 그대로 영향을 받는다 — 화이트리스트
+  기반 출처 필터링 등은 아직 없다.
+- 등록/말소 사유에 대한 LLM 추론(성적·부상이력·수비지표 기반 기대이점 예측)은 아직 구현하지
+  않았다 — 정량 예측은 별도 통계 모델로, LLM은 결과 설명만 맡기는 구조로 설계할 예정.
