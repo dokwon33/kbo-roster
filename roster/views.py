@@ -77,3 +77,26 @@ def player_detail(request, player_id):
 def recent_events(request):
     events = RosterEvent.objects.select_related("player", "team").all()[:100]
     return render(request, "roster/recent_events.html", {"events": events})
+
+
+def standings(request):
+    try:
+        standings_1gun = scraping.fetch_standings_1gun()
+    except requests.RequestException:
+        standings_1gun = []
+
+    try:
+        rows_2gun = scraping.fetch_standings_2gun()
+    except requests.RequestException:
+        rows_2gun = []
+
+    standings_2gun = {
+        "북부": [r for r in rows_2gun if r.division == "북부"],
+        "남부": [r for r in rows_2gun if r.division == "남부"],
+    }
+
+    return render(
+        request,
+        "roster/standings.html",
+        {"standings_1gun": standings_1gun, "standings_2gun": standings_2gun},
+    )

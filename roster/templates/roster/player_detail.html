@@ -1,6 +1,6 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
-{% block title %}{{ player.name }} · KBO 선수단 관리{% endblock %}
+{% block title %}{{ player.name }} · KBO 로스터 트래커{% endblock %}
 {% block content %}
   {% if player.team %}
     <p><a href="{% url 'roster:team_detail' player.team.id %}">&larr; {{ player.team.name }}</a></p>

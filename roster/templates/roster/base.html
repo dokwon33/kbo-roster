@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>{% block title %}KBO 선수단 관리{% endblock %}</title>
+  <title>{% block title %}KBO 로스터 트래커{% endblock %}</title>
   <style>
     body { font-family: -apple-system, "Malgun Gothic", sans-serif; margin: 0; background: #f5f6f8; color: #1c1e21; }
     header { background: #14213d; color: #fff; padding: 14px 24px; }
@@ -12,6 +12,7 @@
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     .card h3 { margin-top: 0; }
+    .team-logo-sm { width: 24px; height: 24px; object-fit: contain; vertical-align: middle; margin-right: 6px; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
@@ -41,15 +42,17 @@
       padding: 6px 14px; cursor: pointer; font-family: inherit;
     }
   </style>
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
   <header>
     <a class="brand" href="{% url 'roster:team_list' %}">
       <img src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/KBOHome/resources/images/common/h1_logo.png" alt="KBO">
-      선수단 관리
+      로스터 트래커
     </a>
     <nav>
       <a href="{% url 'roster:team_list' %}">구단별 현황</a>
+      <a href="{% url 'roster:standings' %}">리그 순위</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
       <a href="/admin/">관리자</a>
       <button type="button" class="info-btn" onclick="document.getElementById('aboutDialog').showModal()">ℹ️ 서비스 소개</button>
@@ -58,7 +61,7 @@
 
   <dialog id="aboutDialog">
     <div class="dialog-body">
-      <h3>KBO 선수단 관리란?</h3>
+      <h3>KBO 로스터 트래커란?</h3>
       <p>
         KBO 공식 사이트의 1군 등록/말소 현황을 자동으로 수집해 구단별 로스터와
         선수별 등록 이력을 한눈에 볼 수 있는 서비스입니다. 

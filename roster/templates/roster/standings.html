@@ -1,0 +1,134 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}리그 순위 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .standings-section { margin-bottom: 32px; }
+  .standings-section h2 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 18px; color: #14213d; margin: 0 0 10px;
+  }
+  .standings-section h2 .division-tag {
+    font-size: 12px; font-weight: normal; color: #64748b;
+    background: #eef1f6; border-radius: 999px; padding: 2px 10px;
+  }
+  .standings-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    overflow-x: auto;
+  }
+  .standings-table { width: 100%; border-collapse: collapse; margin-top: 0; min-width: 640px; }
+  .standings-table th {
+    text-align: center; font-size: 12px; color: #64748b; font-weight: 600;
+    padding: 10px 8px; border-bottom: 2px solid #e5e7eb; white-space: nowrap;
+  }
+  .standings-table td {
+    text-align: center; padding: 9px 8px; font-size: 14px;
+    border-bottom: 1px solid #f0f1f3; white-space: nowrap;
+  }
+  .standings-table tbody tr:hover { background: #f8fafc; }
+  .standings-table tbody tr.cutoff-row td { border-bottom: 2px solid #14213d; }
+  .standings-table td.team-cell { text-align: left; font-weight: 600; color: #1c1e21; }
+  .team-cell .team-name { display: inline-flex; align-items: center; gap: 6px; }
+  .team-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+  .standings-table td.rank-cell { font-weight: 700; color: #14213d; }
+  .standings-table tr.rank-1 td.rank-cell {
+    color: #b8860b;
+  }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; font-size: 13px;
+  }
+  .rank-1 .rank-badge { background: #fef3c7; color: #92400e; }
+  .win-pct-cell { font-variant-numeric: tabular-nums; }
+  .streak-win { color: #166534; font-weight: 600; }
+  .streak-loss { color: #b91c1c; font-weight: 600; }
+  .empty-row td { color: #94a3b8; padding: 20px; }
+
+  @media (max-width: 640px) {
+    .standings-table th, .standings-table td { font-size: 12px; padding: 7px 5px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="standings-section">
+    <h2>🥇 1군 리그 순위</h2>
+    <div class="standings-card">
+      <table class="standings-table">
+        <tr>
+          <th>순위</th><th>팀명</th><th>경기</th><th>승</th><th>패</th><th>무</th>
+          <th>승률</th><th>게임차</th><th>최근10경기</th><th>연속</th><th>홈</th><th>어웨이</th>
+        </tr>
+        {% for row in standings_1gun %}
+          <tr class="{% if row.rank == '1' %}rank-1{% endif %} {% if row.rank == '5' %}cutoff-row{% endif %}">
+            <td class="rank-cell">
+              {% if row.rank == '1' %}<span class="rank-badge">🥇</span>{% else %}{{ row.rank }}{% endif %}
+            </td>
+            <td class="team-cell">
+              <span class="team-name">
+                {% with logo=row.team|team_logo_url %}
+                  {% if logo %}<img class="team-logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                {% endwith %}
+                {{ row.team }}
+              </span>
+            </td>
+            <td>{{ row.games }}</td>
+            <td>{{ row.wins }}</td>
+            <td>{{ row.losses }}</td>
+            <td>{{ row.draws }}</td>
+            <td class="win-pct-cell">{{ row.win_pct }}</td>
+            <td>{% if row.games_behind == '0' %}0{% else %}+{{ row.games_behind }}{% endif %}</td>
+            <td>{{ row.recent_10 }}</td>
+            <td class="{{ row.streak|streak_class }}">{{ row.streak }}</td>
+            <td>{{ row.home_record }}</td>
+            <td>{{ row.away_record }}</td>
+          </tr>
+        {% empty %}
+          <tr class="empty-row"><td colspan="12">데이터를 불러올 수 없습니다</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+  {% for division, rows in standings_2gun.items %}
+    <div class="standings-section">
+      <h2>⚾ 2군 퓨처스리그 <span class="division-tag">{{ division }}</span></h2>
+      <div class="standings-card">
+        <table class="standings-table">
+          <tr>
+            <th>순위</th><th>팀명</th><th>경기</th><th>승</th><th>패</th><th>무</th>
+            <th>승률</th><th>게임차</th><th>최근10경기</th><th>연속</th><th>홈</th><th>어웨이</th>
+          </tr>
+          {% for row in rows %}
+            <tr class="{% if row.rank == '1' %}rank-1{% endif %}">
+              <td class="rank-cell">
+                {% if row.rank == '1' %}<span class="rank-badge">🥇</span>{% else %}{{ row.rank }}{% endif %}
+              </td>
+              <td class="team-cell">
+                <span class="team-name">
+                  {% with logo=row.team|team_logo_url %}
+                    {% if logo %}<img class="team-logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                  {% endwith %}
+                  {{ row.team }}
+                </span>
+              </td>
+              <td>{{ row.games }}</td>
+              <td>{{ row.wins }}</td>
+              <td>{{ row.losses }}</td>
+              <td>{{ row.draws }}</td>
+              <td class="win-pct-cell">{{ row.win_pct }}</td>
+              <td>{% if row.games_behind == '0' %}0{% else %}+{{ row.games_behind }}{% endif %}</td>
+              <td>{{ row.recent_10 }}</td>
+              <td class="{{ row.streak|streak_class }}">{{ row.streak }}</td>
+              <td>{{ row.home_record }}</td>
+              <td>{{ row.away_record }}</td>
+            </tr>
+          {% empty %}
+            <tr class="empty-row"><td colspan="12">데이터를 불러올 수 없습니다</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  {% endfor %}
+{% endblock %}

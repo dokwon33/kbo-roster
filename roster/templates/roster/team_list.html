@@ -1,12 +1,19 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
-{% block title %}구단별 1군/2군 변동 · KBO 선수단 관리{% endblock %}
+{% block title %}구단별 1군/2군 변동 · KBO 로스터 트래커{% endblock %}
 {% block content %}
   <h2>구단별 1군/2군 변동</h2>
   <div class="grid">
     {% for card in cards %}
       <div class="card">
-        <h3><a class="player-link" href="{% url 'roster:team_detail' card.team.id %}">{{ card.team.name }}</a></h3>
+        <h3>
+          <a class="player-link" href="{% url 'roster:team_detail' card.team.id %}">
+            {% with logo=card.team.name|team_logo_url %}
+              {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+            {% endwith %}
+            {{ card.team.name }}
+          </a>
+        </h3>
         <p>1군 {{ card.active|length }}명 · 2군/기타 {{ card.others|length }}명</p>
         <p style="font-size:12px; color:#6b7280; margin-bottom:4px;">1군 등록</p>
         <table>

@@ -226,6 +226,63 @@ def fetch_player_stats(player_id: str, position: str, league: str = "1군") -> d
     return fetch_hitter_stats(player_id, league)
 
 
+TEAM_RANK_URL = "https://www.koreabaseball.com/Record/TeamRank/TeamRank.aspx"
+FUTURES_TEAM_RANK_URL = {
+    "북부": "https://www.koreabaseball.com/Futures/TeamRank/North.aspx",
+    "남부": "https://www.koreabaseball.com/Futures/TeamRank/South.aspx",
+}
+
+
+@dataclass
+class TeamStandingRow:
+    rank: str
+    team: str
+    games: str
+    wins: str
+    losses: str
+    draws: str
+    win_pct: str
+    games_behind: str
+    recent_10: str
+    streak: str
+    home_record: str
+    away_record: str
+    division: str = ""  # 2군(퓨처스)만 "북부"/"남부"로 채워진다.
+
+
+def _parse_standings_table(html: str) -> list:
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.select_one("table.tData, table.tbl")
+    rows = []
+    if not table:
+        return rows
+    for tr in table.select("tbody tr"):
+        cells = [td.get_text(strip=True) for td in tr.select("td")]
+        if len(cells) != 12:
+            continue
+        rows.append(TeamStandingRow(*cells))
+    return rows
+
+
+def fetch_standings_1gun() -> list:
+    """1군 팀 순위표를 가져온다."""
+    resp = requests.get(TEAM_RANK_URL, headers=HEADERS, timeout=20)
+    resp.raise_for_status()
+    return _parse_standings_table(resp.text)
+
+
+def fetch_standings_2gun() -> list:
+    """2군(퓨처스) 북부/남부 리그 순위표를 가져온다."""
+    rows = []
+    for division, url in FUTURES_TEAM_RANK_URL.items():
+        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        for row in _parse_standings_table(resp.text):
+            row.division = division
+            rows.append(row)
+    return rows
+
+
 @dataclass
 class RosterPeriod:
     team: str

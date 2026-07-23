@@ -39,5 +39,5 @@ class RosterEventAdmin(admin.ModelAdmin):
     autocomplete_fields = ("player", "team")
 
 
-admin.site.site_header = "KBO 선수단 관리"
-admin.site.site_title = "KBO 선수단 관리"
+admin.site.site_header = "KBO 로스터 트래커"
+admin.site.site_title = "KBO 로스터 트래커"
