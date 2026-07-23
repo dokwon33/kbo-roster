@@ -1,0 +1,102 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}매진율 통계 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .attendance-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .attendance-card {
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 16px 18px;
+  }
+  .attendance-card h2 {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; color: #14213d; margin: 0 0 4px;
+  }
+  .attendance-card .team-logo { width: 22px; height: 22px; object-fit: contain; }
+  .attendance-card .summary {
+    font-size: 13px; color: #64748b; margin: 0 0 14px;
+  }
+  .attendance-card .summary strong { color: #14213d; font-size: 15px; }
+  .attendance-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .attendance-table caption {
+    text-align: left; font-size: 12px; font-weight: 600; color: #64748b;
+    margin-bottom: 6px;
+  }
+  .attendance-table th {
+    text-align: left; font-size: 12px; color: #94a3b8; font-weight: 600;
+    padding: 5px 4px; border-bottom: 1px solid #e5e7eb;
+  }
+  .attendance-table td {
+    padding: 5px 4px; font-size: 13px; border-bottom: 1px solid #f0f1f3;
+  }
+  .attendance-table td.rate-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .rate-bar-wrap { display: flex; align-items: center; gap: 6px; }
+  .rate-bar-bg { flex: 1; background: #eef1f6; border-radius: 999px; height: 6px; overflow: hidden; }
+  .rate-bar-fill { background: #1e3a8a; height: 100%; border-radius: 999px; }
+  .empty-state { color: #94a3b8; padding: 20px; text-align: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <h1 style="font-size:20px; color:#14213d; margin-bottom:4px;">🎟️ 구장별 좌석 매진율 통계</h1>
+  <p style="font-size:13px; color:#64748b; margin-bottom:20px;">
+    이번 시즌 홈 경기 관중수 ÷ 구장 좌석 수 기준. 삼성 포항 경기는 통계에서 제외됩니다.
+  </p>
+
+  {% if team_stats %}
+    <div class="attendance-grid">
+      {% for stat in team_stats %}
+        <div class="attendance-card">
+          <h2>
+            {% with logo=stat.team|team_logo_url %}
+              {% if logo %}<img class="team-logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+            {% endwith %}
+            {{ stat.team }} <span style="font-weight:400; color:#94a3b8; font-size:12px;">({{ stat.stadium }})</span>
+          </h2>
+          <p class="summary">
+            전체 평균 매진율 <strong>{{ stat.avg_rate|floatformat:1 }}%</strong>
+            <span style="opacity:0"></span>
+            · 홈 {{ stat.total_games }}경기 기준
+          </p>
+
+          <table class="attendance-table">
+            <caption>요일별 평균 매진율</caption>
+            <tr><th>요일</th><th>경기수</th><th>평균 매진율</th></tr>
+            {% for row in stat.weekday_stats %}
+              <tr>
+                <td>{{ row.weekday }}</td>
+                <td>{{ row.games }}</td>
+                <td class="rate-cell">
+                  <div class="rate-bar-wrap">
+                    <div class="rate-bar-bg"><div class="rate-bar-fill" style="width:{{ row.avg_rate|floatformat:1 }}%;"></div></div>
+                    <span>{{ row.avg_rate|floatformat:1 }}%</span>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </table>
+
+          <table class="attendance-table">
+            <caption>상대구단별 평균 매진율</caption>
+            <tr><th>상대팀</th><th>경기수</th><th>평균 매진율</th></tr>
+            {% for row in stat.opponent_stats %}
+              <tr>
+                <td>{{ row.opponent }}</td>
+                <td>{{ row.games }}</td>
+                <td class="rate-cell">
+                  <div class="rate-bar-wrap">
+                    <div class="rate-bar-bg"><div class="rate-bar-fill" style="width:{{ row.avg_rate|floatformat:1 }}%;"></div></div>
+                    <span>{{ row.avg_rate|floatformat:1 }}%</span>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </table>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">데이터를 불러올 수 없습니다</div>
+  {% endif %}
+{% endblock %}

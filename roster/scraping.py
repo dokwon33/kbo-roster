@@ -418,3 +418,79 @@ def fetch_roster_periods(player_id: str, position: str) -> dict:
     resp = requests.get(url_template.format(player_id=player_id), headers=HEADERS, timeout=15)
     resp.raise_for_status()
     return _parse_roster_periods(resp.text)
+
+
+CROWD_URL = "https://www.koreabaseball.com/Record/Crowd/GraphDaily.aspx"
+
+# 구장별 좌석 수용 인원. KBO 공식 사이트는 관중수만 제공하고 좌석 수/매진율은 제공하지 않아 직접 관리한다.
+# 삼성이 가끔 포항에서 치르는 경기는 이 표에 없는 구장이라 자연히 매진율 집계에서 제외된다.
+STADIUM_CAPACITY = {
+    "잠실": 23750,
+    "고척": 16000,
+    "문학": 23000,
+    "수원": 18700,
+    "대전": 17000,
+    "광주": 20500,
+    "대구": 24000,
+    "사직": 22758,
+    "창원": 22758,
+}
+
+WEEKDAY_ORDER = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+@dataclass
+class AttendanceRow:
+    game_date: date
+    weekday: str
+    home: str
+    away: str
+    stadium: str
+    attendance: int
+
+    @property
+    def capacity(self):
+        return STADIUM_CAPACITY.get(self.stadium)
+
+    @property
+    def sellout_rate(self):
+        cap = self.capacity
+        return self.attendance / cap if cap else None
+
+
+def _parse_attendance_rows(html: str) -> list:
+    soup = BeautifulSoup(html, "lxml")
+    tbody = soup.select_one("table.tData tbody")
+    rows = []
+    if not tbody:
+        return rows
+    for tr in tbody.select("tr"):
+        cells = [td.get_text(strip=True) for td in tr.select("td")]
+        if len(cells) != 6:
+            continue
+        date_str, weekday, home, away, stadium, attendance_str = cells
+        if not date_str:
+            continue
+        year, month, day = date_str.split("/")
+        try:
+            attendance = int(attendance_str.replace(",", ""))
+        except ValueError:
+            continue
+        rows.append(
+            AttendanceRow(
+                game_date=date(int(year), int(month), int(day)),
+                weekday=weekday,
+                home=home,
+                away=away,
+                stadium=stadium,
+                attendance=attendance,
+            )
+        )
+    return rows
+
+
+def fetch_attendance_rows() -> list:
+    """이번 시즌 일자별 관중 현황(날짜/요일/홈/원정/구장/관중수) 전체를 가져온다."""
+    resp = requests.get(CROWD_URL, headers=HEADERS, timeout=15)
+    resp.raise_for_status()
+    return _parse_attendance_rows(resp.text)
