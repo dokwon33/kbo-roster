@@ -80,10 +80,10 @@
               </div>
             </div>
             <div class="game-meta">
-              {{ game.stadium }}
-              {% if game.win_pitcher %}· 승 {{ game.win_pitcher }}{% endif %}
-              {% if game.save_pitcher %}· 세 {{ game.save_pitcher }}{% endif %}
-              {% if game.lose_pitcher %}· 패 {{ game.lose_pitcher }}{% endif %}
+              {{ game.stadium }} -
+              {% if game.win_pitcher %} 승리: {{ game.win_pitcher }}{% endif %}/
+              {% if game.save_pitcher %} 세이브: {{ game.save_pitcher }}/{% endif %}
+              {% if game.lose_pitcher %} 패배: {{ game.lose_pitcher }}{% endif %}
             </div>
           {% endif %}
         </div>
