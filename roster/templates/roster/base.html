@@ -26,9 +26,6 @@
     a.player-link:hover { text-decoration: underline; }
     header a.brand { display: inline-flex; align-items: center; gap: 8px; }
     header a.brand img { height: 22px; display: block; background: #fff; padding: 4px 8px; border-radius: 6px; }
-    .mascot { display: inline-block; }
-    .mascot-sm { width: 26px; height: 26px; }
-    .mascot-lg { width: 84px; height: 84px; display: block; margin: 0 auto 12px; }
     header .info-btn {
       background: none; border: 1px solid #475569; color: #cbd5e1; border-radius: 999px;
       font-size: 13px; padding: 3px 10px; margin-left: 16px; cursor: pointer; font-family: inherit;
@@ -52,7 +49,7 @@
 <body>
   <header>
     <a class="brand" href="{% url 'roster:team_list' %}">
-      <span class="mascot mascot-sm">{% include "roster/_mascot.html" %}</span>
+      <img src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/KBOHome/resources/images/common/h1_logo.png" alt="KBO">
       로스터 트래커
     </a>
     <nav>
@@ -66,7 +63,6 @@
 
   <dialog id="aboutDialog">
     <div class="dialog-body">
-      <span class="mascot mascot-lg">{% include "roster/_mascot.html" %}</span>
       <h3>KBO 로스터 트래커란?</h3>
       <p>
         KBO 공식 사이트의 1군 등록/말소 현황을 자동으로 수집해 구단별 로스터와
