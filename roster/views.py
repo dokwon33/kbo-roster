@@ -23,7 +23,16 @@ def team_list(request):
         others = [p for p in players if p not in active_players]
         cards.append({"team": team, "active": active_players, "others": others})
 
-    return render(request, "roster/team_list.html", {"cards": cards})
+    try:
+        latest_game_date, latest_games = scraping.fetch_latest_game_results()
+    except requests.RequestException:
+        latest_game_date, latest_games = None, []
+
+    return render(
+        request,
+        "roster/team_list.html",
+        {"cards": cards, "latest_game_date": latest_game_date, "latest_games": latest_games},
+    )
 
 
 def team_detail(request, team_id):
