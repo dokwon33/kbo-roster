@@ -2,7 +2,8 @@
 
 KBO 선수들의 1군 등록 / 2군 말소 / 부상 등 상태 변화를 추적하는 Django 웹 애플리케이션.
 KBO 공식 사이트에서 등록/말소 현황을 매일 자동으로 수집하고, 사유(부상 부위 등)는 추후 각 구단
-SNS·미디어를 참조해 반영할 수 있는 구조로 되어 있다.
+SNS·미디어를 참조해 반영할 수 있는 구조로 되어 있다. 1군/2군(북부·남부) 리그 순위도 KBO 공식
+사이트에서 실시간으로 가져와 보여준다.
 
 ## 기술 스택
 
@@ -17,11 +18,11 @@ kbo-roster/
 ├── config/                  # Django 프로젝트 설정 (settings, urls)
 ├── roster/                  # 메인 앱
 │   ├── models.py             # Team, Player, RosterEvent
-│   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx) 파서
+│   ├── scraping.py           # KBO 공식 사이트(RegisterAll.aspx, TeamRank.aspx 등) 파서
 │   ├── admin.py              # 관리자 화면 (선수/이벤트 CRUD, 사유 수동 기재)
 │   ├── views.py / urls.py    # 대시보드 뷰
-│   ├── templates/roster/     # 팀별 현황, 선수 상세, 최근 변동 페이지
-│   ├── templatetags/         # 상태 뱃지 표시용 템플릿 필터
+│   ├── templates/roster/     # 팀별 현황, 리그 순위, 선수 상세, 최근 변동 페이지
+│   ├── templatetags/         # 상태 뱃지 · 구단 로고 · 연속 승패 표시용 템플릿 필터
 │   └── management/commands/
 │       └── sync_roster.py    # 스크래핑 결과를 DB에 반영하는 커맨드
 ├── scripts/sync_roster.sh    # 크론에서 호출하는 실행 스크립트
@@ -59,6 +60,12 @@ kbo-roster/
     재현한다. 과거 특정일 백필이 필요할 때 사용.
 - 페이지 내 "1군 등록 현황"(`div.fistStatus`) / "1군 말소 현황"(`div.fistCancelStatus`) 두
   테이블에서 선수명·포지션·소속팀을 파싱한다.
+- 리그 순위는 `Record/TeamRank/TeamRank.aspx`(1군), `Futures/TeamRank/North.aspx`·`South.aspx`
+  (2군 퓨처스 북부/남부)를 그때그때 실시간으로 조회한다 — DB에 저장하지 않고 `/standings/`
+  요청이 올 때마다 파싱해서 보여준다(선수 시즌 성적 조회와 동일한 방식).
+- 구단 로고는 KBO 이미지 CDN의 엠블럼 URL(`emblemBF_{팀코드}.png`)을 팀명→코드 매핑으로
+  조합해 사용한다 (`roster/templatetags/roster_extras.py`의 `team_logo_url` 필터). 1군 10개
+  구단 외에 2군 전용 팀명(고양→키움 2군, 상무, 울산)도 매핑해 두었다.
 
 ## 동기화 커맨드 & diff 로직
 
@@ -87,9 +94,10 @@ crontab에 등록되어 있다:
 
 ## 대시보드 (웹 화면)
 
-- `/` — 구단별 카드 뷰: 팀별 1군 등록 인원과 목록
+- `/` — 구단별 카드 뷰: 팀별 1군 등록 인원과 목록 (구단 로고 표시)
 - `/teams/<id>/` — 팀 상세: 1군 등록 / 2군·기타 인원 목록
 - `/players/<id>/` — 선수 상세: 현재 상태 + 전체 이력 타임라인(사유·출처 링크 포함)
+- `/standings/` — 리그 순위: 1군 전체 순위 + 2군 퓨처스 북부/남부 순위 (구단 로고, 연승/연패 색상 표시)
 - `/events/` — 최근 등록/말소 변동 최신 100건
 - `/admin/` — Django 관리자: 선수/이벤트 CRUD, 사유·출처 수동 기재
 
@@ -113,3 +121,4 @@ python manage.py runserver
   형태로 채워 넣으면 기존 화면·모델 변경 없이 바로 반영된다.
 - 트레이드로 팀이 바뀌는 경우 `Player.team`은 최신 값으로 갱신되지만, 과거 각 `RosterEvent`에는
   당시 소속팀이 그대로 남아 있어 이력 조회 시 참고할 수 있다.
+- 경기결과(시즌 전체 일정/과거 이력) 조회는 아직 구현되어 있지 않다 — 다음 작업으로 예정.
