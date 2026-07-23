@@ -3,3 +3,6 @@ db.sqlite3
 logs/
 __pycache__/
 *.pyc
+SECURITY_TODO.md
+.DS_Store
+.vscode/
