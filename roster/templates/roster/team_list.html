@@ -107,6 +107,7 @@
         </h3>
         <p>1군 {{ card.active|length }}명 · 2군/기타 {{ card.others|length }}명</p>
         <p style="font-size:12px; color:#6b7280; margin-bottom:4px;">1군 등록</p>
+        <div class="table-scroll">
         <table>
           {% for player in card.active %}
             <tr>
@@ -121,8 +122,10 @@
             <tr><td colspan="3">1군 등록 선수 없음</td></tr>
           {% endfor %}
         </table>
+        </div>
         {% if card.others %}
           <p style="font-size:12px; color:#6b7280; margin:12px 0 4px;">2군 / 말소 / 기타</p>
+          <div class="table-scroll">
           <table>
             {% for player in card.others %}
               <tr>
@@ -135,6 +138,7 @@
               </tr>
             {% endfor %}
           </table>
+          </div>
         {% endif %}
       </div>
     {% empty %}

@@ -3,7 +3,8 @@
 {% block title %}최근 변동 · KBO 로스터 트래커{% endblock %}
 {% block content %}
   <h2>최근 등록/말소 변동</h2>
-  <table>
+  <div class="table-scroll">
+  <table style="min-width: 560px;">
     <tr><th>날짜</th><th>선수</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
     {% for event in events %}
       <tr>
@@ -18,4 +19,5 @@
       <tr><td colspan="6">데이터 없음</td></tr>
     {% endfor %}
   </table>
+  </div>
 {% endblock %}
