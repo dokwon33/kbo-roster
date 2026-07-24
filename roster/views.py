@@ -6,14 +6,15 @@ from datetime import timedelta
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.core.management import call_command
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
 from . import llm, news, scraping
-from .models import Player, RosterEvent, Team
+from .models import Feedback, Player, RosterEvent, Team
 
 # 방금 어느 리그에서 옮겨왔는지에 따라 반대편 리그 성적을 보여준다.
 # 2군->1군 콜업: 콜업 전 2군 성적을 보여준다 / 1군->2군 말소: 말소 전 1군 성적을 보여준다.
@@ -354,6 +355,36 @@ def player_news(request, player_id):
             "llm_model": settings.GROQ_MODEL,
         },
     )
+
+
+@require_http_methods(["GET", "POST"])
+def feedback(request):
+    sent = False
+    if request.method == "POST":
+        # 스팸 봇 방지용 허니팟 — 사람 눈에는 안 보이는 필드라 채워져 있으면 봇으로 간주하고 조용히 무시한다.
+        if request.POST.get("website"):
+            return render(request, "roster/feedback.html", {"sent": True})
+
+        content = request.POST.get("content", "").strip()
+        contact = request.POST.get("contact", "").strip()
+        if content:
+            record = Feedback.objects.create(content=content, contact=contact)
+            try:
+                send_mail(
+                    subject="[KBO 로스터 트래커] 새 의견이 도착했습니다",
+                    message=f"{content}\n\n연락처: {contact or '(미입력)'}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[settings.FEEDBACK_RECIPIENT_EMAIL],
+                    fail_silently=False,
+                )
+                record.email_sent = True
+                record.save(update_fields=["email_sent"])
+            except Exception:
+                # 메일 발송(SMTP 설정 오류 등)에 실패해도 의견 자체는 DB에 남아 있으니 유실되지 않는다.
+                pass
+            sent = True
+
+    return render(request, "roster/feedback.html", {"sent": sent})
 
 
 @require_GET

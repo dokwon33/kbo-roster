@@ -1,0 +1,40 @@
+{% extends "roster/base.html" %}
+{% block title %}의견 보내기 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .feedback-form { max-width: 520px; }
+  .feedback-form p { color: #64748b; font-size: 14px; margin-top: -4px; }
+  .feedback-form label { display: block; font-size: 14px; font-weight: 600; color: #14213d; margin: 16px 0 6px; }
+  .feedback-form textarea, .feedback-form input[type="text"] {
+    width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px;
+    font-family: inherit; font-size: 14px; resize: vertical;
+  }
+  .feedback-form textarea { min-height: 140px; }
+  .feedback-form .hp-field { position: absolute; left: -9999px; top: -9999px; }
+  .feedback-form button {
+    margin-top: 20px; background: #14213d; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 20px; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  .feedback-form button:hover { background: #1e2a4a; }
+  .feedback-done { background: #dcfce7; color: #166534; border-radius: 8px; padding: 16px 20px; max-width: 520px; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <h2>의견 보내기</h2>
+  {% if sent %}
+    <div class="feedback-done">소중한 의견 감사합니다! 개발자에게 바로 전달됩니다.</div>
+  {% else %}
+    <form class="feedback-form" method="post">
+      {% csrf_token %}
+      <p>불편한 점이나 추가됐으면 하는 기능이 있다면 편하게 남겨주세요.</p>
+      <label for="content">의견</label>
+      <textarea id="content" name="content" required></textarea>
+      <label for="contact">답변 받을 이메일 (선택)</label>
+      <input type="text" id="contact" name="contact">
+      <input class="hp-field" type="text" name="website" tabindex="-1" autocomplete="off">
+      <button type="submit">보내기</button>
+    </form>
+  {% endif %}
+{% endblock %}

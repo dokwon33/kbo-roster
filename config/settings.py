@@ -47,6 +47,22 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 # 호출해 sync_roster를 트리거하는 방식으로 대체한다. 비어 있으면 /sync/ 엔드포인트가 항상 거부한다.
 SYNC_SECRET_TOKEN = os.environ.get("SYNC_SECRET_TOKEN", "")
 
+# 사용자 의견(피드백) 메일 발송용 SMTP 설정. EMAIL_HOST가 비어 있으면(로컬 개발 등)
+# 실제 발송 대신 콘솔에 출력만 하고, Feedback 레코드는 어느 쪽이든 DB에 남는다.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+)
+# 의견을 받을 개발자 메일 주소.
+FEEDBACK_RECIPIENT_EMAIL = os.environ.get("FEEDBACK_RECIPIENT_EMAIL", "zang03@naver.com")
+
 
 # Application definition
 

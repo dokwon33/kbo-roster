@@ -111,3 +111,16 @@ class RosterEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_date} {self.player.name} - {self.get_event_type_display()}"
+
+
+class Feedback(models.Model):
+    content = models.TextField()
+    contact = models.CharField(max_length=200, blank=True, help_text="답변 받을 이메일 등 (선택)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    email_sent = models.BooleanField(default=False, help_text="개발자 이메일로 발송 성공 여부")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} 의견"

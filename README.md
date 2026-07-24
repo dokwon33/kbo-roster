@@ -179,6 +179,13 @@ GROQ_API_KEY=발급받은_Groq_API_키
 | `DATABASE_URL` | Render/Railway가 Postgres 애드온 생성 시 자동 주입 | 없으면 SQLite로 폴백(배포에는 비권장 — 재배포 시 데이터 유실) |
 | `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 발급받은 값 | 뉴스 수집용 |
 | `GROQ_API_KEY` | 발급받은 값 | AI 요약용 |
+| `EMAIL_HOST` / `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | 예: `smtp.naver.com` / 네이버 계정 / 앱 비밀번호 | "의견 보내기" 메일 발송용. 비어 있으면 콘솔에만 출력되고 실제 발송은 안 됨 |
+| `EMAIL_PORT` / `EMAIL_USE_TLS` | 기본값 `587` / `True` | 대부분의 SMTP(네이버, Gmail 등)에서 기본값 그대로 사용 가능 |
+| `FEEDBACK_RECIPIENT_EMAIL` | 기본값 `zang03@naver.com` | 의견을 받을 주소. 바꾸고 싶을 때만 설정 |
+
+네이버 메일을 발송 계정으로 쓰려면 네이버 메일 환경설정 > POP3/IMAP 설정에서 "SMTP 사용"을
+켜야 하고, 2단계 인증을 쓰는 계정이면 계정 비밀번호 대신 발급받은 앱 비밀번호를
+`EMAIL_HOST_PASSWORD`에 넣는다.
 
 **배포 절차 (Render 기준):**
 1. GitHub 저장소(`main` 브랜치)를 Render에 연결해 새 Web Service 생성
