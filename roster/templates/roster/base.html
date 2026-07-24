@@ -62,16 +62,20 @@
     header .info-btn:hover { background: #1e2a4a; color: #fff; }
     .player-photo { width: 100%; max-width: 160px; border-radius: 8px; background: #e5e7eb; }
     .player-photo-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 6px; background: #e5e7eb; }
-    #aboutDialog { border: none; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; }
-    #aboutDialog::backdrop { background: rgba(15, 23, 42, .5); }
-    #aboutDialog .dialog-body { padding: 20px 24px; }
-    #aboutDialog h3 { margin-top: 0; color: #14213d; }
-    #aboutDialog p { line-height: 1.6; color: #374151; }
-    #aboutDialog .dialog-footer { text-align: right; padding: 0 24px 20px; }
-    #aboutDialog button.close-btn {
+    #aboutDialog, #whatsNewDialog { border: none; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; }
+    #aboutDialog::backdrop, #whatsNewDialog::backdrop { background: rgba(15, 23, 42, .5); }
+    #aboutDialog .dialog-body, #whatsNewDialog .dialog-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+    #aboutDialog h3, #whatsNewDialog h3 { margin-top: 0; color: #14213d; }
+    #aboutDialog p, #whatsNewDialog p { line-height: 1.6; color: #374151; }
+    #aboutDialog .dialog-footer, #whatsNewDialog .dialog-footer { text-align: right; padding: 0 24px 20px; }
+    #aboutDialog button.close-btn, #whatsNewDialog button.close-btn {
       background: #14213d; color: #fff; border: none; border-radius: 6px;
       padding: 6px 14px; cursor: pointer; font-family: inherit;
     }
+    .whatsnew-list { list-style: none; margin: 0; padding: 0; }
+    .whatsnew-list li { padding: 10px 0; border-bottom: 1px solid #f0f1f3; line-height: 1.5; color: #374151; font-size: 14px; }
+    .whatsnew-list li:last-child { border-bottom: none; }
+    .whatsnew-list strong { display: block; color: #14213d; margin-bottom: 2px; }
     .site-footer {
       max-width: 1000px; margin: 32px auto 0; padding: 16px;
       display: flex; align-items: center; justify-content: center; gap: 16px;
@@ -114,6 +118,7 @@
       <a href="{% url 'roster:attendance_stats' %}">매진율 통계</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
       <a href="{% url 'roster:feedback' %}">의견 보내기</a>
+      <button type="button" class="info-btn" onclick="document.getElementById('whatsNewDialog').showModal()">📢 업데이트 소식</button>
       <button type="button" class="info-btn" onclick="document.getElementById('aboutDialog').showModal()">ℹ️ 서비스 소개</button>
     </nav>
   </header>
@@ -134,6 +139,22 @@
     </div>
   </dialog>
 
+  <dialog id="whatsNewDialog" data-version="2026-07-25">
+    <div class="dialog-body">
+      <h3>🎉 업데이트 소식 (7/25)</h3>
+      <ul class="whatsnew-list">
+        <li><strong>🔥 기대되는 2군 콜업 선수</strong>메인 화면에서 최근 콜업된 선수들의 2군 성적(OPS·평균자책점) 기준 기대주를 확인하세요.</li>
+        <li><strong>📰 뉴스 AI 요약 즉시 표시</strong>선수 상세 페이지에 들어가면 바로 요약이 보여요.</li>
+        <li><strong>⚡️ 로딩 속도 개선</strong>리그 순위 · 매진율 통계 · 구단별 현황이 훨씬 빨라졌어요.</li>
+        <li><strong>🗓 날짜별 구분선</strong>최근 변동 페이지가 더 보기 편해졌어요.</li>
+        <li><strong>💌 의견 보내기</strong>메뉴에서 바로 의견을 남기면 개발자에게 이메일로 전달돼요.</li>
+      </ul>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="close-btn" onclick="document.getElementById('whatsNewDialog').close()">확인했어요</button>
+    </div>
+  </dialog>
+
   <main>
     {% block content %}{% endblock %}
   </main>
@@ -149,5 +170,26 @@
       @dojji___
     </a>
   </footer>
+
+  <script>
+    // 오늘 하루 껐으면 오늘 안에는 다시 안 뜨고, 날짜가 바뀌거나 업데이트 내용(data-version)이
+    // 바뀌면 다시 한 번 보여준다. UTC 기준으로 날짜를 계산하면 KST에서는 자정이 아니라
+    // 오전 9시에 날짜가 바뀌어버리므로, 로컬 시간 기준으로 직접 날짜를 구한다.
+    (function () {
+      var dialog = document.getElementById("whatsNewDialog");
+      var version = dialog.dataset.version;
+      var storageKey = "whatsnew_dismissed";
+      var now = new Date();
+      var today = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate();
+      var dismissKey = version + ":" + today;
+
+      if (localStorage.getItem(storageKey) !== dismissKey) {
+        dialog.showModal();
+      }
+      dialog.addEventListener("close", function () {
+        localStorage.setItem(storageKey, dismissKey);
+      });
+    })();
+  </script>
 </body>
 </html>
