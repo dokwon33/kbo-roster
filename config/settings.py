@@ -41,7 +41,7 @@ CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").sp
 NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
 NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 # Render 무료 티어에는 Shell/Cron이 없어, 외부 무료 크론 서비스가 /sync/?token=... 을
 # 호출해 sync_roster를 트리거하는 방식으로 대체한다. 비어 있으면 /sync/ 엔드포인트가 항상 거부한다.
