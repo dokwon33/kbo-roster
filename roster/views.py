@@ -1,5 +1,6 @@
 import hmac
 import io
+import logging
 from collections import defaultdict
 from datetime import timedelta
 
@@ -15,6 +16,8 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from . import llm, news, scraping
 from .models import Feedback, Player, RosterEvent, Team
+
+logger = logging.getLogger(__name__)
 
 # 방금 어느 리그에서 옮겨왔는지에 따라 반대편 리그 성적을 보여준다.
 # 2군->1군 콜업: 콜업 전 2군 성적을 보여준다 / 1군->2군 말소: 말소 전 1군 성적을 보여준다.
@@ -381,7 +384,8 @@ def feedback(request):
                 record.save(update_fields=["email_sent"])
             except Exception:
                 # 메일 발송(SMTP 설정 오류 등)에 실패해도 의견 자체는 DB에 남아 있으니 유실되지 않는다.
-                pass
+                # 다만 원인을 알 수 있게 로그는 남긴다(Render 로그 스트림에서 확인 가능).
+                logger.exception("피드백 메일 발송 실패 (feedback id=%s)", record.id)
             sent = True
 
     return render(request, "roster/feedback.html", {"sent": sent})

@@ -53,7 +53,10 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+# 465는 SSL(암호화 연결 위에 SMTP), 587은 TLS(평문 연결 후 STARTTLS로 전환)를 쓴다 —
+# 두 방식은 배타적이라 포트에 맞춰 기본값을 자동으로 고른다. 필요하면 환경변수로 덮어쓸 수 있다.
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "True" if EMAIL_PORT == 465 else "False") == "True"
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "False" if EMAIL_USE_SSL else "True") == "True"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
