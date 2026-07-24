@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from django.core.management import call_command
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
@@ -18,6 +19,24 @@ _RELATED_LEAGUE = {
     RosterEvent.ACTIVE_1GUN: "2군",
     RosterEvent.OPTIONED_2GUN: "1군",
 }
+
+CACHE_TIMEOUT = 60 * 60 * 24  # 리그 순위/매진율 통계는 하루 1회만 스크래핑하면 충분하다.
+
+
+def _cached_fetch(cache_key, fetch_fn):
+    """KBO 사이트 스크래핑 결과를 하루 동안 캐시한다.
+
+    스크래핑 실패(RequestException) 시에는 캐시에 남기지 않아, 다음 요청에서 바로 재시도한다.
+    """
+    data = cache.get(cache_key)
+    if data is not None:
+        return data
+    try:
+        data = fetch_fn()
+    except requests.RequestException:
+        return []
+    cache.set(cache_key, data, CACHE_TIMEOUT)
+    return data
 
 
 def team_list(request):
@@ -97,15 +116,8 @@ def recent_events(request):
 
 
 def standings(request):
-    try:
-        standings_1gun = scraping.fetch_standings_1gun()
-    except requests.RequestException:
-        standings_1gun = []
-
-    try:
-        rows_2gun = scraping.fetch_standings_2gun()
-    except requests.RequestException:
-        rows_2gun = []
+    standings_1gun = _cached_fetch("standings_1gun", scraping.fetch_standings_1gun)
+    rows_2gun = _cached_fetch("standings_2gun", scraping.fetch_standings_2gun)
 
     standings_2gun = {
         "북부": [r for r in rows_2gun if r.division == "북부"],
@@ -120,10 +132,7 @@ def standings(request):
 
 
 def attendance_stats(request):
-    try:
-        rows = scraping.fetch_attendance_rows()
-    except requests.RequestException:
-        rows = []
+    rows = _cached_fetch("attendance_rows", scraping.fetch_attendance_rows)
 
     home_rows = [r for r in rows if r.capacity]
 
