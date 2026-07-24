@@ -15,7 +15,7 @@ MIT 라이선스로 공개되어 있으며 누구나 자유롭게 PR을 보낼 �
 - SQLite(로컬 개발용) / PostgreSQL(배포용, `DATABASE_URL` 환경변수로 자동 전환)
 - requests + BeautifulSoup(lxml) — KBO 공식 사이트 스크래핑
 - 네이버 뉴스 검색 API — 선수 관련 기사 수집
-- Groq API(오픈소스 모델 `llama-3.3-70b-versatile` 호스팅) — 수집된 기사 요약/설명 생성
+- Groq API(오픈소스 모델 `openai/gpt-oss-120b` 호스팅) — 수집된 기사 요약/설명 생성
 - python-dotenv — `.env` 파일로 API 키 등 민감 설정 분리
 - gunicorn + whitenoise — 배포 환경 WSGI 서버 및 정적 파일 서빙
 
@@ -89,7 +89,7 @@ kbo-roster/
   링크/날짜)을 가져온다. API 키(`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`)는 `.env`에 보관하고
   `config/settings.py`가 `python-dotenv`로 읽어들인다 (`.env`는 git에 커밋되지 않음).
 - `roster/llm.py`의 `summarize_player_news`가 위 기사 목록만 프롬프트에 담아 Groq API
-  (`llama-3.3-70b-versatile`, OpenAI 호환 `/chat/completions` 엔드포인트)에 요청,
+  (`openai/gpt-oss-120b`, OpenAI 호환 `/chat/completions` 엔드포인트)에 요청,
   "기사에 없는 내용은 추측하지 말 것"을 시스템 프롬프트로 명시해 사실 기반 3~5문장 요약을
   생성한다. 출처가 불분명한 SNS/커뮤니티가 아니라 뉴스 API 결과만 입력으로 쓰기 때문에,
   LLM이 근거 없는 내용을 지어낼 여지를 최소화했다.
