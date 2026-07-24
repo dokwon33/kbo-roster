@@ -1,14 +1,26 @@
 {% extends "roster/base.html" %}
 {% load roster_extras %}
 {% block title %}최근 변동 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .date-divider td {
+    background: #eef1f6; color: #475569; font-weight: 600; font-size: 13px;
+    padding: 8px 12px;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
   <h2>최근 등록/말소 변동</h2>
   <div class="table-scroll">
   <table style="min-width: 560px;">
-    <tr><th>날짜</th><th>선수</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
+    <tr><th>선수</th><th>구분</th><th>팀</th><th>사유</th><th>출처</th></tr>
     {% for event in events %}
+      {% ifchanged event.event_date %}
+        <tr class="date-divider"><td colspan="5">{{ event.event_date|date:"Y년 m월 d일" }}</td></tr>
+      {% endifchanged %}
       <tr>
-        <td>{{ event.event_date }}</td>
         <td><a class="player-link" href="{% url 'roster:player_detail' event.player.id %}">{{ event.player.name }}</a></td>
         <td><span class="badge {{ event|badge_class }}">{{ event.get_event_type_display }}</span></td>
         <td>{{ event.team|default:"-" }}</td>
@@ -16,7 +28,7 @@
         <td>{{ event.get_source_display }}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="6">데이터 없음</td></tr>
+      <tr><td colspan="5">데이터 없음</td></tr>
     {% endfor %}
   </table>
   </div>
