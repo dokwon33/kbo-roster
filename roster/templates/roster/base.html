@@ -3,6 +3,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}KBO 로스터 트래커{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%231e3a8a'/%3E%3Cg fill='%231e3a8a'%3E%3Ccircle cx='16' cy='30' r='9'/%3E%3Ccircle cx='10' cy='50' r='9'/%3E%3Ccircle cx='16' cy='70' r='9'/%3E%3Ccircle cx='32' cy='85' r='9'/%3E%3Ccircle cx='50' cy='90' r='9'/%3E%3Ccircle cx='68' cy='85' r='9'/%3E%3Ccircle cx='84' cy='70' r='9'/%3E%3Ccircle cx='90' cy='50' r='9'/%3E%3Ccircle cx='84' cy='30' r='9'/%3E%3Ccircle cx='68' cy='15' r='9'/%3E%3Ccircle cx='50' cy='10' r='9'/%3E%3Ccircle cx='32' cy='15' r='9'/%3E%3C/g%3E%3Ccircle cx='50' cy='52' r='34' fill='%23fde9c8'/%3E%3Ccircle cx='30' cy='30' r='7' fill='%231e3a8a'/%3E%3Ccircle cx='70' cy='30' r='7' fill='%231e3a8a'/%3E%3Cellipse cx='38' cy='50' rx='4.5' ry='6' fill='%2314213d'/%3E%3Cellipse cx='62' cy='50' rx='4.5' ry='6' fill='%2314213d'/%3E%3Cpath d='M50 58 L44 66 L56 66 Z' fill='%23eab308'/%3E%3Cpath d='M38 76 Q50 84 62 76' stroke='%2314213d' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 
@@ -25,12 +26,21 @@
       font-weight: 700;
       font-display: swap;
     }
+    * { box-sizing: border-box; }
     body { font-family: "KBO Dia Gothic", -apple-system, "Malgun Gothic", sans-serif; margin: 0; background: #f5f6f8; color: #1c1e21; }
     header { background: #14213d; color: #fff; padding: 14px 24px; }
     header a { color: #fff; text-decoration: none; font-weight: bold; }
+    .header-bar { display: flex; align-items: center; justify-content: space-between; }
+    .nav-toggle {
+      display: none; background: none; border: 1px solid #475569; color: #fff;
+      border-radius: 6px; font-size: 18px; line-height: 1; padding: 4px 10px;
+      cursor: pointer; font-family: inherit;
+    }
+    nav { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 0; margin-top: 10px; }
     nav a { color: #cbd5e1; margin-left: 16px; text-decoration: none; font-size: 14px; }
     main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     .card h3 { margin-top: 0; }
     .team-logo-sm { width: 24px; height: 24px; object-fit: contain; vertical-align: middle; margin-right: 6px; }
@@ -73,15 +83,31 @@
     }
     .site-footer a:hover { color: #14213d; }
     .site-footer svg { width: 18px; height: 18px; fill: currentColor; }
+
+    @media (max-width: 640px) {
+      .nav-toggle { display: inline-block; }
+      nav {
+        display: none; flex-direction: column; align-items: flex-start;
+        margin-top: 12px; gap: 10px;
+      }
+      nav.open { display: flex; }
+      nav a { margin-left: 0; font-size: 15px; }
+      header .info-btn { margin-left: 0; }
+      main { margin: 16px auto; padding: 0 12px; }
+      .site-footer { flex-direction: column; gap: 8px; }
+    }
   </style>
   {% block extra_css %}{% endblock %}
 </head>
 <body>
   <header>
-    <a class="brand" href="{% url 'roster:team_list' %}">
-      <img src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/KBOHome/resources/images/common/h1_logo.png" alt="KBO">
-      로스터 트래커
-    </a>
+    <div class="header-bar">
+      <a class="brand" href="{% url 'roster:team_list' %}">
+        <img src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/KBOHome/resources/images/common/h1_logo.png" alt="KBO">
+        로스터 트래커
+      </a>
+      <button type="button" class="nav-toggle" aria-label="메뉴 열기" onclick="document.querySelector('header nav').classList.toggle('open')">☰</button>
+    </div>
     <nav>
       <a href="{% url 'roster:team_list' %}">구단별 현황</a>
       <a href="{% url 'roster:standings' %}">리그 순위</a>
