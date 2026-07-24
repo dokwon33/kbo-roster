@@ -1,5 +1,6 @@
 from django.db import models
 from django.urls import reverse
+from django.utils.functional import cached_property
 
 
 class Team(models.Model):
@@ -46,7 +47,7 @@ class Player(models.Model):
     def get_absolute_url(self):
         return reverse("roster:player_detail", args=[self.pk])
 
-    @property
+    @cached_property
     def current_status(self):
         return self.events.order_by("-event_date", "-id").first()
 

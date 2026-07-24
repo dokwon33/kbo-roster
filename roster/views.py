@@ -23,7 +23,7 @@ _RELATED_LEAGUE = {
 CACHE_TIMEOUT = 60 * 60 * 24  # 리그 순위/매진율 통계는 하루 1회만 스크래핑하면 충분하다.
 
 
-def _cached_fetch(cache_key, fetch_fn):
+def _cached_fetch(cache_key, fetch_fn, default=None):
     """KBO 사이트 스크래핑 결과를 하루 동안 캐시한다.
 
     스크래핑 실패(RequestException) 시에는 캐시에 남기지 않아, 다음 요청에서 바로 재시도한다.
@@ -34,9 +34,29 @@ def _cached_fetch(cache_key, fetch_fn):
     try:
         data = fetch_fn()
     except requests.RequestException:
-        return []
+        return [] if default is None else default
     cache.set(cache_key, data, CACHE_TIMEOUT)
     return data
+
+
+def _attach_current_status(players):
+    """선수 목록의 최신 RosterEvent를 쿼리 1번으로 미리 가져와 current_status 캐시를 채운다.
+
+    Player.current_status는 cached_property라, 여기서 미리 값을 채워두면(non-data descriptor라
+    인스턴스에 직접 대입 가능) 이후 뷰/템플릿에서 반복 접근해도 추가 쿼리가 발생하지 않는다.
+    미리 채우지 않으면 선수 수만큼 쿼리가 발생하는 N+1 문제가 생긴다.
+    """
+    players = list(players)
+    latest_by_player = {}
+    events = (
+        RosterEvent.objects.filter(player_id__in=[p.id for p in players])
+        .order_by("player_id", "-event_date", "-id")
+    )
+    for event in events:
+        latest_by_player.setdefault(event.player_id, event)
+    for player in players:
+        player.current_status = latest_by_player.get(player.id)
+    return players
 
 
 def team_list(request):
@@ -45,15 +65,14 @@ def team_list(request):
 
     cards = []
     for team in teams:
-        players = list(team.players.all())
+        players = _attach_current_status(team.players.all())
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
         cards.append({"team": team, "active": active_players, "others": others})
 
-    try:
-        latest_game_date, latest_games = scraping.fetch_latest_game_results()
-    except requests.RequestException:
-        latest_game_date, latest_games = None, []
+    latest_game_date, latest_games = _cached_fetch(
+        "latest_game_results", scraping.fetch_latest_game_results, default=(None, [])
+    )
 
     return render(
         request,
@@ -64,7 +83,7 @@ def team_list(request):
 
 def team_detail(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
-    players = team.players.all()
+    players = _attach_current_status(team.players.all())
     active_type = RosterEvent.ACTIVE_1GUN
     active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
     others = [p for p in players if p not in active_players]
