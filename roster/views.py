@@ -95,6 +95,96 @@ def _get_news_summary(player):
     return player.news_summary, player.news_articles_cache
 
 
+CALLUP_HEADLINE_WINDOW = timedelta(days=7)
+CALLUP_MIN_AB = 10  # 표본이 너무 적으면 극단값(예: 1타수 1안타 OPS 2.000)이 뽑히는 걸 방지
+CALLUP_MIN_IP = 5.0
+
+
+def _parse_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_innings(ip_str):
+    """KBO 이닝 표기('9 2/3'처럼 분수가 붙는 경우 포함)를 실수로 변환한다."""
+    if not ip_str:
+        return None
+    parts = ip_str.strip().split()
+    try:
+        innings = float(parts[0])
+    except ValueError:
+        return None
+    if len(parts) > 1 and "/" in parts[1]:
+        num, _, den = parts[1].partition("/")
+        try:
+            innings += float(num) / float(den)
+        except (ValueError, ZeroDivisionError):
+            pass
+    return innings
+
+
+def _recent_callup_players():
+    """최근 CALLUP_HEADLINE_WINDOW 기간 내 1군에 콜업됐고, 그 이후 다시 말소되지 않아
+    지금도 1군인 선수 목록을 반환한다."""
+    since = timezone.now().date() - CALLUP_HEADLINE_WINDOW
+    events = (
+        RosterEvent.objects.filter(event_type=RosterEvent.ACTIVE_1GUN, event_date__gte=since)
+        .select_related("player")
+        .order_by("player_id", "-event_date", "-id")
+    )
+    players = []
+    seen = set()
+    for event in events:
+        player = event.player
+        if player.id in seen or not player.kbo_player_id:
+            continue
+        seen.add(player.id)
+        latest = player.current_status
+        if latest is None or latest.id != event.id:
+            continue
+        players.append(player)
+    return players
+
+
+def _build_callup_headlines():
+    """최근 콜업된 선수들의 2군 성적(OPS/평균자책점)을 바탕으로 기대되는 타자/투수 1명씩 뽑는다.
+
+    비교 대상이 최근 콜업 선수들뿐이라, 리그 전체 평균 같은 별도 기준 없이도 상대적으로
+    비교 가능하다. KBO 공식 2군 성적 페이지 값(출루율+장타율=OPS, 평균자책점)만 그대로 쓴다.
+    """
+    hitter_best = None
+    pitcher_best = None
+    for player in _recent_callup_players():
+        try:
+            if player.position == "투":
+                stats = scraping.fetch_pitcher_stats(player.kbo_player_id, "2군")
+                if not stats:
+                    continue
+                ip = _parse_innings(stats.get("이닝"))
+                era = _parse_float(stats.get("평균자책점"))
+                if ip is None or era is None or ip < CALLUP_MIN_IP:
+                    continue
+                if pitcher_best is None or era < pitcher_best["era"]:
+                    pitcher_best = {"player": player, "era": era, "stats": stats}
+            else:
+                stats = scraping.fetch_hitter_stats(player.kbo_player_id, "2군")
+                if not stats:
+                    continue
+                ab = _parse_float(stats.get("타수"))
+                obp = _parse_float(stats.get("출루율"))
+                slg = _parse_float(stats.get("장타율"))
+                if ab is None or obp is None or slg is None or ab < CALLUP_MIN_AB:
+                    continue
+                ops = obp + slg
+                if hitter_best is None or ops > hitter_best["ops"]:
+                    hitter_best = {"player": player, "ops": ops, "stats": stats}
+        except requests.RequestException:
+            continue
+    return hitter_best, pitcher_best
+
+
 def team_list(request):
     teams = Team.objects.prefetch_related("players").all()
     active_type = RosterEvent.ACTIVE_1GUN
@@ -109,11 +199,20 @@ def team_list(request):
     latest_game_date, latest_games = _cached_fetch(
         "latest_game_results", scraping.fetch_latest_game_results, default=(None, [])
     )
+    hitter_headline, pitcher_headline = _cached_fetch(
+        "callup_headlines", _build_callup_headlines, default=(None, None)
+    )
 
     return render(
         request,
         "roster/team_list.html",
-        {"cards": cards, "latest_game_date": latest_game_date, "latest_games": latest_games},
+        {
+            "cards": cards,
+            "latest_game_date": latest_game_date,
+            "latest_games": latest_games,
+            "hitter_headline": hitter_headline,
+            "pitcher_headline": pitcher_headline,
+        },
     )
 
 

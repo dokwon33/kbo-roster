@@ -34,10 +34,61 @@
     font-size: 12px; background: #fee2e2; color: #991b1b;
   }
   .no-games-note { color: #64748b; font-size: 14px; }
+
+  .callup-headline-section { margin-bottom: 28px; }
+  .callup-headline-section h2 { font-size: 18px; color: #14213d; margin: 0 0 10px; }
+  .callup-headline-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
+  }
+  .callup-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 18px 16px; text-decoration: none; color: inherit;
+  }
+  .callup-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .callup-card-label {
+    font-size: 12px; font-weight: 700; color: #fff; background: #14213d;
+    border-radius: 999px; padding: 2px 10px; margin-bottom: 10px;
+  }
+  .callup-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; }
+  .callup-name { font-size: 15px; font-weight: 700; color: #14213d; }
+  .callup-team { font-size: 12px; font-weight: 400; color: #64748b; }
+  .callup-stat-main { font-size: 20px; font-weight: 700; color: #1e3a8a; margin-top: 6px; }
+  .callup-stat-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
 </style>
 {% endblock %}
 
 {% block content %}
+  {% if hitter_headline or pitcher_headline %}
+    <div class="callup-headline-section">
+      <h2>🔥 기대되는 2군 콜업 선수</h2>
+      <div class="callup-headline-grid">
+        {% if hitter_headline %}
+          <a class="callup-card" href="{% url 'roster:player_detail' hitter_headline.player.id %}">
+            <span class="callup-card-label">타자</span>
+            {% if hitter_headline.player.photo_url %}
+              <img class="callup-photo" src="{{ hitter_headline.player.photo_url }}" alt="" onerror="this.style.display='none'">
+            {% endif %}
+            <span class="callup-name">{{ hitter_headline.player.name }} <span class="callup-team">{{ hitter_headline.player.team }}</span></span>
+            <span class="callup-stat-main">OPS {{ hitter_headline.ops|floatformat:3 }}</span>
+            <span class="callup-stat-sub">2군 타율 {{ hitter_headline.stats.타율 }} · 홈런 {{ hitter_headline.stats.홈런 }} · 타점 {{ hitter_headline.stats.타점 }}</span>
+          </a>
+        {% endif %}
+        {% if pitcher_headline %}
+          <a class="callup-card" href="{% url 'roster:player_detail' pitcher_headline.player.id %}">
+            <span class="callup-card-label">투수</span>
+            {% if pitcher_headline.player.photo_url %}
+              <img class="callup-photo" src="{{ pitcher_headline.player.photo_url }}" alt="" onerror="this.style.display='none'">
+            {% endif %}
+            <span class="callup-name">{{ pitcher_headline.player.name }} <span class="callup-team">{{ pitcher_headline.player.team }}</span></span>
+            <span class="callup-stat-main">평균자책점 {{ pitcher_headline.era|floatformat:2 }}</span>
+            <span class="callup-stat-sub">2군 {{ pitcher_headline.stats.이닝 }}이닝 · 탈삼진 {{ pitcher_headline.stats.삼진 }}</span>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
   <div class="latest-games-section">
     <h2>
       최근 경기 결과
