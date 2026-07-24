@@ -1,6 +1,7 @@
 import hmac
 import io
 from collections import defaultdict
+from datetime import timedelta
 
 import requests
 from django.conf import settings
@@ -8,6 +9,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from . import llm, news, scraping
@@ -57,6 +59,40 @@ def _attach_current_status(players):
     for player in players:
         player.current_status = latest_by_player.get(player.id)
     return players
+
+
+NEWS_SUMMARY_TTL = timedelta(hours=6)
+
+
+def _get_news_summary(player):
+    """선수 뉴스 AI 요약을 가져온다. 캐시가 없거나 오래됐으면 새로 생성해 Player에 저장한다.
+
+    네이버 뉴스 API/Groq LLM 호출은 비용·응답 시간이 들기 때문에, 방문할 때마다 새로
+    호출하지 않고 결과를 DB에 캐싱해 NEWS_SUMMARY_TTL 동안 재사용한다. 조회가 실패해도
+    기존 캐시는 유지하고 재시도 시각만 갱신해, 장애 중에 매 요청마다 재시도하지 않는다.
+    """
+    is_stale = (
+        player.news_summary_updated_at is None
+        or timezone.now() - player.news_summary_updated_at > NEWS_SUMMARY_TTL
+    )
+    if not is_stale:
+        return player.news_summary, player.news_articles_cache
+
+    try:
+        articles = news.fetch_player_news(player.name)
+    except requests.RequestException:
+        articles = None
+
+    if articles is not None:
+        player.news_summary = (llm.summarize_player_news(player.name, articles) if articles else None) or ""
+        player.news_articles_cache = [
+            {"title": a.title, "description": a.description, "link": a.link, "pub_date": a.pub_date}
+            for a in articles
+        ]
+    player.news_summary_updated_at = timezone.now()
+    player.save(update_fields=["news_summary", "news_articles_cache", "news_summary_updated_at"])
+
+    return player.news_summary, player.news_articles_cache
 
 
 def team_list(request):
@@ -116,6 +152,8 @@ def player_detail(request, player_id):
         except requests.RequestException:
             roster_periods = None
 
+    news_summary, news_articles = _get_news_summary(player)
+
     return render(
         request,
         "roster/player_detail.html",
@@ -125,6 +163,9 @@ def player_detail(request, player_id):
             "related_league": related_league,
             "related_stats": related_stats,
             "roster_periods": roster_periods,
+            "news_summary": news_summary,
+            "news_articles": news_articles,
+            "llm_model": settings.GROQ_MODEL,
         },
     )
 
@@ -196,13 +237,7 @@ def attendance_stats(request):
 
 def player_news(request, player_id):
     player = get_object_or_404(Player, pk=player_id)
-
-    try:
-        articles = news.fetch_player_news(player.name)
-    except requests.RequestException:
-        articles = []
-
-    summary = llm.summarize_player_news(player.name, articles) if articles else None
+    summary, articles = _get_news_summary(player)
 
     return render(
         request,

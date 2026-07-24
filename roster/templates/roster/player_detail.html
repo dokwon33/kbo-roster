@@ -30,6 +30,20 @@
   }
   .news-link-btn:hover { background: #1e3a8a; }
 
+  .summary-card {
+    background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .summary-card p { margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; }
+  .summary-note { font-size: 12px; color: #6366f1; margin-top: 8px; }
+  .summary-sources {
+    list-style: none; margin: 12px 0 0; padding: 10px 0 0; border-top: 1px solid #c7d2fe;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .summary-sources li::before { content: "🔗 "; }
+  .summary-sources a { font-size: 13px; color: #3730a3; text-decoration: none; }
+  .summary-sources a:hover { text-decoration: underline; }
+
   .section-card { margin-bottom: 24px; }
   .section-card h3 {
     font-size: 15px; color: #14213d; margin: 0 0 10px;
@@ -99,9 +113,30 @@
           <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
         </div>
       </div>
-      <a class="news-link-btn" href="{% url 'roster:player_news' player.id %}">📰 관련 뉴스/이슈 보기</a>
     </div>
   </div>
+
+  {% if news_summary or news_articles %}
+    <div class="section-card">
+      <h3>📰 관련 뉴스 · AI 요약</h3>
+      <div class="summary-card">
+        {% if news_summary %}
+          <p>{{ news_summary }}</p>
+          <p class="summary-note">※ 오픈소스 LLM({{ llm_model }})이 아래 근거 기사만 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+        {% else %}
+          <p style="color:#64748b;">요약을 생성하지 못했습니다. 아래 근거 기사를 참고하세요.</p>
+        {% endif %}
+        {% if news_articles %}
+          <ul class="summary-sources">
+            {% for article in news_articles %}
+              <li><a href="{{ article.link }}" target="_blank" rel="noopener">{{ article.title }}</a></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      <a class="news-link-btn" href="{% url 'roster:player_news' player.id %}">기사 전체 보기 ({{ news_articles|length }}건)</a>
+    </div>
+  {% endif %}
 
   {% if related_league %}
     <div class="section-card">

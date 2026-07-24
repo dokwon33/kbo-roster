@@ -32,6 +32,13 @@ class Player(models.Model):
         help_text="KBO 공식 사이트 선수 고유 코드 (pcode). 사진 URL 조회 등에 사용",
     )
     photo_url = models.URLField(blank=True, help_text="KBO 공식 사이트 선수 사진 URL (재호스팅하지 않고 링크만 저장)")
+    news_summary = models.TextField(blank=True, help_text="네이버 뉴스 기사 기반 AI 요약 캐시")
+    news_articles_cache = models.JSONField(
+        default=list, blank=True, help_text="요약 생성에 사용된 기사 목록(제목/설명/링크/날짜) 캐시"
+    )
+    news_summary_updated_at = models.DateTimeField(
+        null=True, blank=True, help_text="AI 요약을 마지막으로 새로 생성한 시각"
+    )
 
     class Meta:
         ordering = ["team__name", "name"]
