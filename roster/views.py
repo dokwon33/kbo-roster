@@ -95,7 +95,7 @@ def _get_news_summary(player):
     return player.news_summary, player.news_articles_cache
 
 
-CALLUP_HEADLINE_WINDOW = timedelta(days=7)
+CALLUP_CANDIDATE_LIMIT = 20  # 날짜(일수) 컷오프 대신 "가장 최근 콜업 N명" 방식 - 콜업이 뜸한 시기에도 헤드라인이 통째로 비지 않도록 함
 CALLUP_MIN_AB = 10  # 표본이 너무 적으면 극단값(예: 1타수 1안타 OPS 2.000)이 뽑히는 걸 방지
 CALLUP_MIN_IP = 5.0
 
@@ -126,11 +126,15 @@ def _parse_innings(ip_str):
 
 
 def _recent_callup_players():
-    """최근 CALLUP_HEADLINE_WINDOW 기간 내 1군에 콜업됐고, 그 이후 다시 말소되지 않아
-    지금도 1군인 선수 목록을 반환한다."""
-    since = timezone.now().date() - CALLUP_HEADLINE_WINDOW
+    """가장 최근에 1군 콜업됐고, 그 이후 다시 말소되지 않아 지금도 1군인 선수 중
+    콜업 시점이 최신순인 상위 CALLUP_CANDIDATE_LIMIT명을 반환한다.
+
+    날짜(일수) 컷오프 대신 "최근 콜업 N명" 방식을 쓰는 이유: 콜업이 뜸한 시기엔
+    고정된 날짜 창 안에 아무도 안 들어와서 헤드라인이 통째로 비어버리는데, 이 방식은
+    활동이 적을 때 자연스럽게 더 과거까지 훑어서 항상 마지막으로 콜업된 선수들을 보여준다.
+    """
     events = (
-        RosterEvent.objects.filter(event_type=RosterEvent.ACTIVE_1GUN, event_date__gte=since)
+        RosterEvent.objects.filter(event_type=RosterEvent.ACTIVE_1GUN)
         .select_related("player")
         .order_by("player_id", "-event_date", "-id")
     )
@@ -144,8 +148,10 @@ def _recent_callup_players():
         latest = player.current_status
         if latest is None or latest.id != event.id:
             continue
-        players.append(player)
-    return players
+        players.append((event.event_date, event.id, player))
+
+    players.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [player for _, _, player in players[:CALLUP_CANDIDATE_LIMIT]]
 
 
 def _build_callup_headlines():
