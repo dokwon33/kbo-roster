@@ -9,13 +9,14 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
+from django.db.models import Sum
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from . import llm, news, scraping
-from .models import Feedback, Player, RosterEvent, Team
+from .models import DailyStat, Feedback, Player, RosterEvent, Team
 
 logger = logging.getLogger(__name__)
 
@@ -407,3 +408,16 @@ def trigger_sync(request):
     buffer = io.StringIO()
     call_command("sync_roster", stdout=buffer, stderr=buffer)
     return HttpResponse(buffer.getvalue() or "sync_roster 완료", content_type="text/plain")
+
+
+@require_GET
+def stats(request):
+    """방문자수(페이지뷰)/LLM 호출 수 통계. 개발자 확인용이라 /sync/와 동일한 토큰으로 보호한다."""
+    expected = settings.SYNC_SECRET_TOKEN
+    provided = request.GET.get("token", "")
+    if not expected or not hmac.compare_digest(expected, provided):
+        return HttpResponseForbidden("forbidden")
+
+    all_stats = DailyStat.objects.all()
+    totals = all_stats.aggregate(page_views=Sum("page_views"), llm_calls=Sum("llm_calls"))
+    return render(request, "roster/stats.html", {"daily": all_stats[:30], "totals": totals})

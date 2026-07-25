@@ -1,0 +1,45 @@
+{% extends "roster/base.html" %}
+{% block title %}통계 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stats-totals { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stats-totals .card {
+    background: #fff; border-radius: 10px; padding: 16px 20px; flex: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .stats-totals .card .label { color: #64748b; font-size: 13px; }
+  .stats-totals .card .value { color: #14213d; font-size: 24px; font-weight: 700; margin-top: 4px; }
+  table.stats-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; }
+  table.stats-table th, table.stats-table td { padding: 8px 14px; text-align: right; font-size: 14px; }
+  table.stats-table th:first-child, table.stats-table td:first-child { text-align: left; }
+  table.stats-table th { background: #f5f6f8; color: #64748b; font-weight: 600; }
+  table.stats-table tr:not(:last-child) td { border-bottom: 1px solid #f0f1f3; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <h2>통계</h2>
+  <div class="stats-totals">
+    <div class="card">
+      <div class="label">누적 방문(페이지뷰)</div>
+      <div class="value">{{ totals.page_views|default:0 }}</div>
+    </div>
+    <div class="card">
+      <div class="label">누적 LLM 호출</div>
+      <div class="value">{{ totals.llm_calls|default:0 }}</div>
+    </div>
+  </div>
+  <table class="stats-table">
+    <thead>
+      <tr><th>날짜</th><th>방문(페이지뷰)</th><th>LLM 호출</th></tr>
+    </thead>
+    <tbody>
+      {% for row in daily %}
+        <tr><td>{{ row.date }}</td><td>{{ row.page_views }}</td><td>{{ row.llm_calls }}</td></tr>
+      {% empty %}
+        <tr><td colspan="3">데이터 없음</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

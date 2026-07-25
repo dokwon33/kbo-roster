@@ -4,6 +4,8 @@ import re
 import requests
 from django.conf import settings
 
+from . import stats
+
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # 다국어 모델이 한국어 생성 중 한자를 섞어 쓰는 경우가 있어, 프롬프트 지시와 별개로
@@ -37,6 +39,7 @@ def summarize_player_news(player_name: str, articles: list) -> str | None:
     )
     user_prompt = _USER_PROMPT_TEMPLATE.format(player_name=player_name, articles_text=articles_text)
 
+    stats.record_llm_call()
     try:
         resp = requests.post(
             GROQ_CHAT_URL,

@@ -124,3 +124,21 @@ class Feedback(models.Model):
 
     def __str__(self):
         return f"{self.created_at:%Y-%m-%d %H:%M} 의견"
+
+
+class DailyStat(models.Model):
+    """방문자수(페이지뷰)와 LLM(Groq) 호출 수를 날짜별로 집계한다.
+
+    요청마다 행을 쌓지 않고 날짜당 한 행에 카운트만 누적해, 트래픽이 늘어도
+    테이블이 무한정 커지지 않게 한다.
+    """
+
+    date = models.DateField(unique=True)
+    page_views = models.PositiveIntegerField(default=0)
+    llm_calls = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.date} 방문 {self.page_views} / LLM {self.llm_calls}"
