@@ -109,20 +109,52 @@
     </div>
   </div>
 
-  {% if news_summary or news_articles %}
-    <div class="section-card">
-      <h3>📰 관련 뉴스 · AI 요약</h3>
-      <div class="summary-card">
-        {% if news_summary %}
-          <p>{{ news_summary }}</p>
-          <p class="summary-note">※ 오픈소스 LLM({{ llm_model }})이 검색된 기사를 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
-        {% else %}
-          <p style="color:#64748b;">요약을 생성하지 못했습니다.</p>
-        {% endif %}
-      </div>
-      <a class="news-link-btn" href="{% url 'roster:player_news' player.id %}">기사 전체 보기 ({{ news_articles|length }}건)</a>
+  <div class="section-card">
+    <h3>📰 관련 뉴스 · AI 요약</h3>
+    <div class="summary-card" id="news-summary-card" data-summary-url="{% url 'roster:player_news_summary' player.id %}">
+      {% if news_summary_updated_at %}
+        <p id="news-summary-text">{{ news_summary|default:"요약을 생성하지 못했습니다." }}</p>
+        <p class="summary-note" id="news-summary-note">※ 오픈소스 LLM({{ llm_model }})이 검색된 기사를 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+      {% else %}
+        <p id="news-summary-text" style="color:#64748b;">최신 뉴스를 불러오는 중...</p>
+      {% endif %}
     </div>
-  {% endif %}
+    <a class="news-link-btn" id="news-link-btn" href="{% url 'roster:player_news' player.id %}">
+      기사 전체 보기{% if news_summary_updated_at %} ({{ news_articles|length }}건){% endif %}
+    </a>
+  </div>
+
+  <script>
+    (function () {
+      var card = document.getElementById("news-summary-card");
+      if (!card) return;
+
+      fetch(card.dataset.summaryUrl)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var text = document.getElementById("news-summary-text");
+          var hasSummary = !!data.summary;
+          text.textContent = data.summary || "요약을 생성하지 못했습니다.";
+          text.style.color = hasSummary ? "" : "#64748b";
+
+          if (hasSummary && !document.getElementById("news-summary-note")) {
+            var note = document.createElement("p");
+            note.className = "summary-note";
+            note.id = "news-summary-note";
+            note.textContent = "※ 오픈소스 LLM(" + data.llm_model + ")이 검색된 기사를 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.";
+            card.appendChild(note);
+          }
+
+          var linkBtn = document.getElementById("news-link-btn");
+          if (linkBtn) {
+            linkBtn.textContent = "기사 전체 보기 (" + data.article_count + "건)";
+          }
+        })
+        .catch(function () {
+          // 백그라운드 새로고침 실패는 조용히 무시한다 — 이미 보이는 캐시된 값(또는 로딩 문구)을 그대로 둔다.
+        });
+    })();
+  </script>
 
   {% if related_league %}
     <div class="section-card">

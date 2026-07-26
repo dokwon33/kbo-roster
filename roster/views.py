@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
 from django.db.models import Sum
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
@@ -268,8 +268,9 @@ def player_detail(request, player_id):
         except requests.RequestException:
             roster_periods = None
 
-    news_summary, news_articles = _get_news_summary(player)
-
+    # 네이버 뉴스/Groq LLM 호출은 몇 초씩 걸릴 수 있어, 상세 페이지 렌더링을 막지 않도록
+    # 여기서는 이미 캐시된 값만 즉시 보여주고, 최신화(6시간 지났으면 재생성)는
+    # player_news_summary 뷰를 JS로 비동기 호출해 처리한다.
     return render(
         request,
         "roster/player_detail.html",
@@ -279,8 +280,9 @@ def player_detail(request, player_id):
             "related_league": related_league,
             "related_stats": related_stats,
             "roster_periods": roster_periods,
-            "news_summary": news_summary,
-            "news_articles": news_articles,
+            "news_summary": player.news_summary,
+            "news_articles": player.news_articles_cache,
+            "news_summary_updated_at": player.news_summary_updated_at,
             "llm_model": settings.GROQ_MODEL,
         },
     )
@@ -365,6 +367,23 @@ def player_news(request, player_id):
             "llm_model": settings.GROQ_MODEL,
         },
     )
+
+
+@require_GET
+def player_news_summary(request, player_id):
+    """선수 상세 페이지가 JS로 비동기 호출하는 뉴스 요약 API.
+
+    캐시가 신선하면 DB에 저장된 값을 그대로 반환하고, 오래됐으면 이 요청 안에서
+    새로 생성한다 — 페이지가 이미 그려진 뒤 백그라운드에서 호출되므로 느려도
+    화면 렌더링을 막지 않는다.
+    """
+    player = get_object_or_404(Player, pk=player_id)
+    summary, articles = _get_news_summary(player)
+    return JsonResponse({
+        "summary": summary,
+        "article_count": len(articles or []),
+        "llm_model": settings.GROQ_MODEL,
+    })
 
 
 @require_http_methods(["GET", "POST"])
