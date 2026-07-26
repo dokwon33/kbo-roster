@@ -28,10 +28,13 @@ _RELATED_LEAGUE = {
 }
 
 CACHE_TIMEOUT = 60 * 60 * 24  # 리그 순위/매진율 통계는 하루 1회만 스크래핑하면 충분하다.
+# 경기 결과는 보통 밤 11시 전에 갈리기 때문에, 하루 캐시를 그대로 쓰면 마지막 방문 시점 기준으로
+# 다음날 같은 시각까지 어제 결과가 남아있을 수 있다. 그래서 훨씬 짧은 주기로 따로 캐시한다.
+GAME_RESULTS_CACHE_TIMEOUT = 60 * 15
 
 
-def _cached_fetch(cache_key, fetch_fn, default=None):
-    """KBO 사이트 스크래핑 결과를 하루 동안 캐시한다.
+def _cached_fetch(cache_key, fetch_fn, default=None, timeout=CACHE_TIMEOUT):
+    """KBO 사이트 스크래핑 결과를 일정 시간 동안 캐시한다.
 
     스크래핑 실패(RequestException) 시에는 캐시에 남기지 않아, 다음 요청에서 바로 재시도한다.
     """
@@ -42,7 +45,7 @@ def _cached_fetch(cache_key, fetch_fn, default=None):
         data = fetch_fn()
     except requests.RequestException:
         return [] if default is None else default
-    cache.set(cache_key, data, CACHE_TIMEOUT)
+    cache.set(cache_key, data, timeout)
     return data
 
 
@@ -208,7 +211,10 @@ def team_list(request):
         cards.append({"team": team, "active": active_players, "others": others})
 
     latest_game_date, latest_games = _cached_fetch(
-        "latest_game_results", scraping.fetch_latest_game_results, default=(None, [])
+        "latest_game_results",
+        scraping.fetch_latest_game_results,
+        default=(None, []),
+        timeout=GAME_RESULTS_CACHE_TIMEOUT,
     )
     hitter_headline, pitcher_headline = _cached_fetch(
         "callup_headlines", _build_callup_headlines, default=(None, None)
