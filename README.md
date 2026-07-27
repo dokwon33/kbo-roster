@@ -99,6 +99,32 @@ kbo-roster/
   둘 수 없어 Groq 호스팅 API로 교체했다 — 코드 구조(기사 목록만 근거로 요약, 사실 아닌 내용
   추측 금지)는 동일하게 유지했다.
 
+## 마이팀 실시간 알림 (Web Push)
+
+- 구단 상세 페이지(`/teams/<id>/`)에서 "🔔 이 팀 알림 받기"를 누르면 브라우저가 Web Push를
+  구독하고, `PushSubscription`(팀, endpoint, p256dh/auth 키)으로 저장된다.
+- `sync_roster`가 새 `RosterEvent`(1군 등록/2군 말소)를 생성할 때마다 `roster/push.py`의
+  `send_push_to_team`이 해당 팀 구독자 전원에게 VAPID 서명된 Web Push 알림을 보낸다
+  (`pywebpush`). 구독이 만료(404/410)되면 자동으로 `PushSubscription`을 삭제한다.
+- 서비스워커(`/sw.js`)는 스코프를 사이트 전체(`/`)로 주기 위해 정적 파일이 아닌 루트 경로
+  뷰(`views.service_worker`)로 서빙한다. `manifest.json` + 아이콘을 추가해 "홈 화면에 추가"도
+  가능하다.
+- 안드로이드(Chrome)는 설치 여부와 무관하게 거의 완벽히 동작하고, iOS는 16.4 이상에서 Safari로
+  "홈 화면에 추가"한 PWA 상태에서만 푸시가 온다 (일반 브라우저 탭에서는 iOS가 지원하지 않음).
+- 환경변수: `VAPID_PRIVATE_KEY_B64`(PEM을 base64로 감싼 값), `VAPID_PUBLIC_KEY`(URL-safe
+  base64), `VAPID_CLAIM_EMAIL`(`mailto:...`). 새로 발급하려면:
+  ```python
+  from py_vapid import Vapid
+  from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+  import base64
+
+  v = Vapid(); v.generate_keys()
+  print(base64.b64encode(v.private_pem()).decode())  # VAPID_PRIVATE_KEY_B64
+  print(base64.urlsafe_b64encode(
+      v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+  ).rstrip(b"=").decode())  # VAPID_PUBLIC_KEY
+  ```
+
 ## 동기화 커맨드 & diff 로직
 
 ```
@@ -202,6 +228,7 @@ GROQ_API_KEY=발급받은_Groq_API_키
 | `EMAIL_HOST` / `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | 예: `smtp.naver.com` / 네이버 계정 / 앱 비밀번호 | "의견 보내기" 메일 발송용. 비어 있으면 콘솔에만 출력되고 실제 발송은 안 됨 |
 | `EMAIL_PORT` / `EMAIL_USE_TLS` | 기본값 `587` / `True` | 대부분의 SMTP(네이버, Gmail 등)에서 기본값 그대로 사용 가능 |
 | `FEEDBACK_RECIPIENT_EMAIL` | 기본값 `zang03@naver.com` | 의견을 받을 주소. 바꾸고 싶을 때만 설정 |
+| `VAPID_PRIVATE_KEY_B64` / `VAPID_PUBLIC_KEY` / `VAPID_CLAIM_EMAIL` | 위 "마이팀 실시간 알림" 절 참고 | 마이팀 Web Push 발송용. 비어 있으면 알림 버튼이 표시되지 않음 |
 
 네이버 메일을 발송 계정으로 쓰려면 네이버 메일 환경설정 > POP3/IMAP 설정에서 "SMTP 사용"을
 켜야 하고, 2단계 인증을 쓰는 계정이면 계정 비밀번호 대신 발급받은 앱 비밀번호를

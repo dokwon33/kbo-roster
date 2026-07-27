@@ -40,6 +40,15 @@
   .roster-table tbody tr:last-child td { border-bottom: none; }
   .roster-table .player-cell { display: flex; align-items: center; }
   .roster-table .empty-cell { color: #94a3b8; text-align: center; padding: 20px; }
+
+  .push-btn {
+    display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+    background: #14213d; color: #fff; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; padding: 8px 14px; cursor: pointer; font-family: inherit;
+  }
+  .push-btn:hover { background: #1e3a8a; }
+  .push-btn.subscribed { background: #eef1f6; color: #14213d; }
+  .push-note { font-size: 12px; color: #94a3b8; margin-top: 6px; }
 </style>
 {% endblock %}
 
@@ -54,7 +63,11 @@
       <h2>{{ team.name }}</h2>
       <div class="team-summary">1군 {{ active_players|length }}명 · 2군/기타 {{ other_players|length }}명</div>
     </div>
+    {% if vapid_public_key %}
+      <button type="button" class="push-btn" id="push-btn" data-team-id="{{ team.id }}">🔔 이 팀 알림 받기</button>
+    {% endif %}
   </div>
+  {% if vapid_public_key %}<p class="push-note" id="push-note"></p>{% endif %}
 
   <div class="roster-section">
     <h3>1군 등록 <span class="count-tag">{{ active_players|length }}명</span></h3>
@@ -103,4 +116,104 @@
       </table>
     </div>
   </div>
+
+  {% if vapid_public_key %}
+  <script>
+    (function () {
+      var VAPID_PUBLIC_KEY = "{{ vapid_public_key }}";
+      var teamId = "{{ team.id }}";
+      var btn = document.getElementById("push-btn");
+      var note = document.getElementById("push-note");
+
+      function getCookie(name) {
+        var match = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+        return match ? decodeURIComponent(match[2]) : null;
+      }
+      var csrftoken = getCookie("csrftoken");
+
+      function urlBase64ToUint8Array(base64String) {
+        var padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        var rawData = atob(base64);
+        var outputArray = new Uint8Array(rawData.length);
+        for (var i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+      }
+
+      function setSubscribedUI(subscribed) {
+        btn.classList.toggle("subscribed", subscribed);
+        btn.textContent = subscribed ? "🔕 알림 해제" : "🔔 이 팀 알림 받기";
+      }
+
+      function refreshUI() {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+          note.textContent = "이 브라우저는 알림을 지원하지 않습니다.";
+          btn.disabled = true;
+          return;
+        }
+        navigator.serviceWorker.ready.then(function (reg) {
+          reg.pushManager.getSubscription().then(function (sub) {
+            var myTeamId = localStorage.getItem("myTeamId");
+            setSubscribedUI(!!sub && myTeamId === teamId);
+          });
+        });
+      }
+
+      btn.addEventListener("click", function () {
+        navigator.serviceWorker.ready.then(function (reg) {
+          reg.pushManager.getSubscription().then(function (existing) {
+            var alreadyThisTeam = existing && localStorage.getItem("myTeamId") === teamId;
+
+            if (alreadyThisTeam) {
+              fetch("{% url 'roster:push_unsubscribe' %}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+                body: JSON.stringify({ endpoint: existing.endpoint }),
+              }).then(function () {
+                return existing.unsubscribe();
+              }).then(function () {
+                localStorage.removeItem("myTeamId");
+                setSubscribedUI(false);
+                note.textContent = "알림을 해제했습니다.";
+              });
+              return;
+            }
+
+            Notification.requestPermission().then(function (permission) {
+              if (permission !== "granted") {
+                note.textContent = "알림 권한이 거부되었습니다.";
+                return;
+              }
+              var subscribePromise = existing
+                ? Promise.resolve(existing)
+                : reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+                  });
+
+              subscribePromise.then(function (sub) {
+                var json = sub.toJSON();
+                return fetch("{% url 'roster:push_subscribe' %}", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken },
+                  body: JSON.stringify({
+                    team_id: teamId,
+                    endpoint: json.endpoint,
+                    keys: json.keys,
+                  }),
+                });
+              }).then(function () {
+                localStorage.setItem("myTeamId", teamId);
+                setSubscribedUI(true);
+                note.textContent = "이 팀의 변동 알림을 받습니다.";
+              });
+            });
+          });
+        });
+      });
+
+      refreshUI();
+    })();
+  </script>
+  {% endif %}
 {% endblock %}

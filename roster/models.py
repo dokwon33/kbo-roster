@@ -126,6 +126,19 @@ class Feedback(models.Model):
         return f"{self.created_at:%Y-%m-%d %H:%M} 의견"
 
 
+class PushSubscription(models.Model):
+    """브라우저 Web Push 구독 정보. 사용자가 '마이팀'으로 고른 팀의 로스터 변동을 알림으로 받는다."""
+
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.URLField(unique=True, max_length=500)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.team.name} 구독 ({self.endpoint[:40]}...)"
+
+
 class DailyStat(models.Model):
     """방문자수(페이지뷰)와 LLM(Groq) 호출 수를 날짜별로 집계한다.
 

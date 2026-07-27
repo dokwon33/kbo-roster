@@ -1,8 +1,10 @@
 import hmac
 import io
+import json
 import logging
 from collections import defaultdict
 from datetime import timedelta
+from pathlib import Path
 
 import requests
 from django.conf import settings
@@ -10,13 +12,14 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
 from django.db.models import Sum
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
 from . import llm, news, scraping
-from .models import DailyStat, Feedback, Player, RosterEvent, Team
+from .models import DailyStat, Feedback, Player, PushSubscription, RosterEvent, Team
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +236,7 @@ def team_list(request):
     )
 
 
+@ensure_csrf_cookie
 def team_detail(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
     players = _attach_current_status(team.players.all())
@@ -242,7 +246,12 @@ def team_detail(request, team_id):
     return render(
         request,
         "roster/team_detail.html",
-        {"team": team, "active_players": active_players, "other_players": others},
+        {
+            "team": team,
+            "active_players": active_players,
+            "other_players": others,
+            "vapid_public_key": settings.VAPID_PUBLIC_KEY,
+        },
     )
 
 
@@ -446,3 +455,43 @@ def stats(request):
     all_stats = DailyStat.objects.all()
     totals = all_stats.aggregate(page_views=Sum("page_views"), llm_calls=Sum("llm_calls"))
     return render(request, "roster/stats.html", {"daily": all_stats[:30], "totals": totals})
+
+
+@require_GET
+def service_worker(request):
+    """Web Push 서비스워커. 스코프를 사이트 전체(/)로 주기 위해 정적 파일이 아닌 루트 경로(/sw.js)에서 서빙한다."""
+    path = Path(settings.BASE_DIR) / "roster" / "static" / "roster" / "js" / "sw-source.js"
+    return HttpResponse(path.read_text(), content_type="application/javascript")
+
+
+@require_http_methods(["POST"])
+def push_subscribe(request):
+    """브라우저의 Web Push 구독 정보를 받아 '마이팀'으로 저장(갱신)한다."""
+    try:
+        payload = json.loads(request.body)
+        team_id = payload["team_id"]
+        endpoint = payload["endpoint"]
+        p256dh = payload["keys"]["p256dh"]
+        auth = payload["keys"]["auth"]
+    except (KeyError, ValueError, TypeError):
+        return HttpResponseBadRequest("invalid payload")
+
+    team = get_object_or_404(Team, pk=team_id)
+    PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={"team": team, "p256dh": p256dh, "auth": auth},
+    )
+    return JsonResponse({"ok": True})
+
+
+@require_http_methods(["POST"])
+def push_unsubscribe(request):
+    """구독 해제. 프론트에서 endpoint만 보내면 된다."""
+    try:
+        payload = json.loads(request.body)
+        endpoint = payload["endpoint"]
+    except (KeyError, ValueError, TypeError):
+        return HttpResponseBadRequest("invalid payload")
+
+    PushSubscription.objects.filter(endpoint=endpoint).delete()
+    return JsonResponse({"ok": True})
