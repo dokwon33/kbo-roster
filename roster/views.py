@@ -207,11 +207,13 @@ def team_list(request):
     active_type = RosterEvent.ACTIVE_1GUN
 
     cards = []
+    team_ids_by_name = {}
     for team in teams:
         players = _attach_current_status(team.players.all())
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
         cards.append({"team": team, "active": active_players, "others": others})
+        team_ids_by_name[team.name] = team.id
 
     latest_game_date, latest_games = _cached_fetch(
         "latest_game_results",
@@ -232,6 +234,7 @@ def team_list(request):
             "latest_games": latest_games,
             "hitter_headline": hitter_headline,
             "pitcher_headline": pitcher_headline,
+            "team_ids_by_name": team_ids_by_name,
         },
     )
 
@@ -311,10 +314,16 @@ def standings(request):
         "남부": [r for r in rows_2gun if r.division == "남부"],
     }
 
+    team_ids_by_name = dict(Team.objects.values_list("name", "id"))
+
     return render(
         request,
         "roster/standings.html",
-        {"standings_1gun": standings_1gun, "standings_2gun": standings_2gun},
+        {
+            "standings_1gun": standings_1gun,
+            "standings_2gun": standings_2gun,
+            "team_ids_by_name": team_ids_by_name,
+        },
     )
 
 

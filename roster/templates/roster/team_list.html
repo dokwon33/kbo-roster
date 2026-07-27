@@ -34,6 +34,8 @@
     font-size: 12px; background: #fee2e2; color: #991b1b;
   }
   .no-games-note { color: #64748b; font-size: 14px; }
+  .team-name-link { color: inherit; text-decoration: none; }
+  .team-name-link:hover { text-decoration: underline; }
 
   .callup-headline-section { margin-bottom: 28px; }
   .callup-headline-section h2 { font-size: 18px; color: #14213d; margin: 0 0 10px; }
@@ -101,14 +103,18 @@
             <div class="matchup">
               <div class="side">
                 <span class="side-team">
-                  {% with logo=game.away_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
-                  {{ game.away_team }}
+                  {% with logo=game.away_team|team_logo_url tid=team_ids_by_name|get_item:game.away_team %}
+                    {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}
+                    {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ game.away_team }}</a>{% else %}{{ game.away_team }}{% endif %}
+                  {% endwith %}
                 </span>
               </div>
               <div class="side">
                 <span class="side-team">
-                  {% with logo=game.home_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
-                  {{ game.home_team }}
+                  {% with logo=game.home_team|team_logo_url tid=team_ids_by_name|get_item:game.home_team %}
+                    {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}
+                    {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ game.home_team }}</a>{% else %}{{ game.home_team }}{% endif %}
+                  {% endwith %}
                 </span>
               </div>
             </div>
@@ -117,15 +123,19 @@
             <div class="matchup">
               <div class="side {% if game.away_score > game.home_score %}winner{% elif game.away_score < game.home_score %}loser{% endif %}">
                 <span class="side-team">
-                  {% with logo=game.away_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
-                  {{ game.away_team }}
+                  {% with logo=game.away_team|team_logo_url tid=team_ids_by_name|get_item:game.away_team %}
+                    {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}
+                    {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ game.away_team }}</a>{% else %}{{ game.away_team }}{% endif %}
+                  {% endwith %}
                 </span>
                 <span class="side-score">{{ game.away_score }}</span>
               </div>
               <div class="side {% if game.home_score > game.away_score %}winner{% elif game.home_score < game.away_score %}loser{% endif %}">
                 <span class="side-team">
-                  {% with logo=game.home_team|team_logo_url %}{% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}{% endwith %}
-                  {{ game.home_team }}
+                  {% with logo=game.home_team|team_logo_url tid=team_ids_by_name|get_item:game.home_team %}
+                    {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="">{% endif %}
+                    {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ game.home_team }}</a>{% else %}{{ game.home_team }}{% endif %}
+                  {% endwith %}
                 </span>
                 <span class="side-score">{{ game.home_score }}</span>
               </div>
