@@ -64,13 +64,13 @@
     header .info-btn:hover { background: #1e2a4a; color: #fff; }
     .player-photo { width: 100%; max-width: 160px; border-radius: 8px; background: #e5e7eb; }
     .player-photo-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 6px; background: #e5e7eb; }
-    #aboutDialog, #whatsNewDialog { border: none; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; }
-    #aboutDialog::backdrop, #whatsNewDialog::backdrop { background: rgba(15, 23, 42, .5); }
-    #aboutDialog .dialog-body, #whatsNewDialog .dialog-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
-    #aboutDialog h3, #whatsNewDialog h3 { margin-top: 0; color: #14213d; }
-    #aboutDialog p, #whatsNewDialog p { line-height: 1.6; color: #374151; }
-    #aboutDialog .dialog-footer, #whatsNewDialog .dialog-footer { text-align: right; padding: 0 24px 20px; }
-    #aboutDialog button.close-btn, #whatsNewDialog button.close-btn {
+    #aboutDialog, #whatsNewDialog, #notifyGuideDialog { border: none; border-radius: 10px; padding: 0; max-width: 420px; width: 90%; }
+    #aboutDialog::backdrop, #whatsNewDialog::backdrop, #notifyGuideDialog::backdrop { background: rgba(15, 23, 42, .5); }
+    #aboutDialog .dialog-body, #whatsNewDialog .dialog-body, #notifyGuideDialog .dialog-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+    #aboutDialog h3, #whatsNewDialog h3, #notifyGuideDialog h3 { margin-top: 0; color: #14213d; }
+    #aboutDialog p, #whatsNewDialog p, #notifyGuideDialog p { line-height: 1.6; color: #374151; }
+    #aboutDialog .dialog-footer, #whatsNewDialog .dialog-footer, #notifyGuideDialog .dialog-footer { text-align: right; padding: 0 24px 20px; }
+    #aboutDialog button.close-btn, #whatsNewDialog button.close-btn, #notifyGuideDialog button.close-btn {
       background: #14213d; color: #fff; border: none; border-radius: 6px;
       padding: 6px 14px; cursor: pointer; font-family: inherit;
     }
@@ -123,6 +123,7 @@
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
       <a href="{% url 'roster:feedback' %}">의견 보내기</a>
       <button type="button" class="info-btn" onclick="document.getElementById('whatsNewDialog').showModal()">📢 업데이트 소식</button>
+      <button type="button" class="info-btn" onclick="document.getElementById('notifyGuideDialog').showModal()">🔔 알림 받는 방법</button>
       <button type="button" class="info-btn" onclick="document.getElementById('aboutDialog').showModal()">ℹ️ 서비스 소개</button>
     </nav>
   </header>
@@ -143,11 +144,41 @@
     </div>
   </dialog>
 
+  <dialog id="notifyGuideDialog">
+    <div class="dialog-body">
+      <h3>🔔 마이팀 알림 받는 방법</h3>
+      <p>
+        구단 상세 페이지에서 <strong>"🔔 이 팀 알림 받기"</strong> 버튼을 누르면, 그 팀의
+        1군 등록/2군 말소 소식이 생길 때마다 브라우저 알림으로 받아볼 수 있어요.
+      </p>
+      <h3 style="margin-top:16px;">💻 PC / 🤖 안드로이드</h3>
+      <p>
+        크롬 등 대부분의 브라우저에서 버튼만 누르고 알림 권한을 허용하면 바로 끝이에요.
+      </p>
+      <h3 style="margin-top:16px;">🍎 아이폰 (iOS)</h3>
+      <p>
+        iOS에서는 정책상 사파리든 크롬이든 내부적으로 같은 엔진을 쓰기 때문에, 일반 브라우저 탭에서는
+        알림 기능 자체가 지원되지 않아요. 아래 순서대로 "홈 화면에 추가"를 해야만 알림을 받을 수 있어요
+        (iOS 16.4 이상 필요).
+      </p>
+      <ol style="padding-left:20px; line-height:1.8; color:#374151; font-size:14px;">
+        <li><strong>사파리</strong>로 이 사이트에 접속</li>
+        <li>하단 공유 버튼(<strong>⬆️</strong>) 탭</li>
+        <li><strong>"홈 화면에 추가"</strong> 선택</li>
+        <li>홈 화면에 생긴 아이콘으로 실행</li>
+        <li>구단 페이지에서 "🔔 이 팀 알림 받기" 버튼 클릭</li>
+      </ol>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" class="close-btn" onclick="document.getElementById('notifyGuideDialog').close()">확인했어요</button>
+    </div>
+  </dialog>
+
   <dialog id="whatsNewDialog" data-version="2026-07-27">
     <div class="dialog-body">
       <h3>🎉 업데이트 소식 (7/27)</h3>
       <ul class="whatsnew-list">
-        <li><strong>🔔 마이팀 실시간 알림</strong>구단 페이지에서 '이 팀 알림 받기'를 누르면 그 팀의 1군 등록/2군 말소 소식을 휴대폰·브라우저 알림으로 받아볼 수 있어요.</li>
+        <li><strong>🔔 마이팀 실시간 알림</strong>구단 페이지에서 '이 팀 알림 받기'를 누르면 그 팀의 1군 등록/2군 말소 소식을 휴대폰·브라우저 알림으로 받아볼 수 있어요. 아이폰은 설정이 조금 다르니 메뉴의 "🔔 알림 받는 방법"을 확인해주세요.</li>
         <li><strong>📱 모바일 반응형 디자인</strong>휴대폰에서도 메뉴·표·카드가 훨씬 보기 편해졌어요.</li>
         <li><strong>🔗 팀명 클릭으로 바로 이동</strong>최근 경기 결과·리그 순위에서 팀명을 누르면 그 구단 현황 페이지로 바로 이동해요.</li>
       </ul>
