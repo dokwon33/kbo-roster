@@ -11,7 +11,7 @@
   .back-link:hover { color: #14213d; }
 
   .team-header {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
   }
   .team-header .team-logo-lg { width: 44px; height: 44px; object-fit: contain; }
   .team-header h2 { margin: 0; font-size: 22px; color: #14213d; }
@@ -49,6 +49,10 @@
   .push-btn:hover { background: #1e3a8a; }
   .push-btn.subscribed { background: #eef1f6; color: #14213d; }
   .push-note { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+
+  @media (max-width: 480px) {
+    .push-btn { margin-left: 0; width: 100%; justify-content: center; }
+  }
 </style>
 {% endblock %}
 
