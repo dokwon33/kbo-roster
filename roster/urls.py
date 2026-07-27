@@ -16,4 +16,7 @@ urlpatterns = [
     path("standings/", views.standings, name="standings"),
     path("attendance/", views.attendance_stats, name="attendance_stats"),
     path("feedback/", views.feedback, name="feedback"),
+    path("sw.js", views.service_worker, name="service_worker"),
+    path("push/subscribe/", views.push_subscribe, name="push_subscribe"),
+    path("push/unsubscribe/", views.push_unsubscribe, name="push_unsubscribe"),
 ]

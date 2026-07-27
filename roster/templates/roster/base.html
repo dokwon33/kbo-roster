@@ -4,6 +4,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14213d">
+  <link rel="manifest" href="{% static 'roster/manifest.json' %}">
   <title>{% block title %}KBO 로스터 트래커{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%231e3a8a'/%3E%3Cg fill='%231e3a8a'%3E%3Ccircle cx='16' cy='30' r='9'/%3E%3Ccircle cx='10' cy='50' r='9'/%3E%3Ccircle cx='16' cy='70' r='9'/%3E%3Ccircle cx='32' cy='85' r='9'/%3E%3Ccircle cx='50' cy='90' r='9'/%3E%3Ccircle cx='68' cy='85' r='9'/%3E%3Ccircle cx='84' cy='70' r='9'/%3E%3Ccircle cx='90' cy='50' r='9'/%3E%3Ccircle cx='84' cy='30' r='9'/%3E%3Ccircle cx='68' cy='15' r='9'/%3E%3Ccircle cx='50' cy='10' r='9'/%3E%3Ccircle cx='32' cy='15' r='9'/%3E%3C/g%3E%3Ccircle cx='50' cy='52' r='34' fill='%23fde9c8'/%3E%3Ccircle cx='30' cy='30' r='7' fill='%231e3a8a'/%3E%3Ccircle cx='70' cy='30' r='7' fill='%231e3a8a'/%3E%3Cellipse cx='38' cy='50' rx='4.5' ry='6' fill='%2314213d'/%3E%3Cellipse cx='62' cy='50' rx='4.5' ry='6' fill='%2314213d'/%3E%3Cpath d='M50 58 L44 66 L56 66 Z' fill='%23eab308'/%3E%3Cpath d='M38 76 Q50 84 62 76' stroke='%2314213d' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 
@@ -76,6 +78,7 @@
     .whatsnew-list li { padding: 10px 0; border-bottom: 1px solid #f0f1f3; line-height: 1.5; color: #374151; font-size: 14px; }
     .whatsnew-list li:last-child { border-bottom: none; }
     .whatsnew-list strong { display: block; color: #14213d; margin-bottom: 2px; }
+    .whatsnew-divider { border: none; border-top: 1px dashed #cbd5e1; margin: 20px 0 4px; }
     .site-footer {
       max-width: 1000px; margin: 32px auto 0; padding: 16px;
       display: flex; align-items: center; justify-content: center; gap: 16px;
@@ -140,8 +143,15 @@
     </div>
   </dialog>
 
-  <dialog id="whatsNewDialog" data-version="2026-07-25">
+  <dialog id="whatsNewDialog" data-version="2026-07-27">
     <div class="dialog-body">
+      <h3>🎉 업데이트 소식 (7/27)</h3>
+      <ul class="whatsnew-list">
+        <li><strong>🔔 마이팀 실시간 알림</strong>구단 페이지에서 '이 팀 알림 받기'를 누르면 그 팀의 1군 등록/2군 말소 소식을 휴대폰·브라우저 알림으로 받아볼 수 있어요.</li>
+        <li><strong>📱 모바일 반응형 디자인</strong>휴대폰에서도 메뉴·표·카드가 훨씬 보기 편해졌어요.</li>
+        <li><strong>🔗 팀명 클릭으로 바로 이동</strong>최근 경기 결과·리그 순위에서 팀명을 누르면 그 구단 현황 페이지로 바로 이동해요.</li>
+      </ul>
+      <hr class="whatsnew-divider">
       <h3>🎉 업데이트 소식 (7/25)</h3>
       <ul class="whatsnew-list">
         <li><strong>🔥 기대되는 2군 콜업 선수</strong>메인 화면에서 최근 콜업된 선수들의 2군 성적(OPS·평균자책점) 기준 기대주를 확인하세요.</li>
@@ -192,6 +202,12 @@
         localStorage.setItem(storageKey, dismissKey);
       });
     })();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("{% url 'roster:service_worker' %}");
+    }
   </script>
 </body>
 </html>

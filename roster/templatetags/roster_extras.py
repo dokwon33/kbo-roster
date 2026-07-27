@@ -6,6 +6,12 @@ from roster.models import RosterEvent
 
 register = template.Library()
 
+
+@register.filter
+def get_item(mapping, key):
+    """딕셔너리에서 변수 key로 값을 꺼낸다 (Django 템플릿은 변수 키 딕셔너리 조회를 기본 지원하지 않음)."""
+    return mapping.get(key) if mapping else None
+
 _TEAM_LOGO_CODE = {
     "삼성": "SS",
     "KT": "KT",

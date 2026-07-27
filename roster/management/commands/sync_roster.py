@@ -3,6 +3,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
 
 from roster.models import Player, RosterEvent, Team
+from roster.push import send_push_to_team
 from roster.scraping import fetch_current, fetch_for_date, resolve_player_profile
 
 
@@ -53,6 +54,7 @@ class Command(BaseCommand):
                     defaults={"team": team, "source": RosterEvent.SOURCE_SCRAPER},
                 )
                 created += 1
+                self._notify_team(team, player, event_type)
 
             if player.team_id != team.id or player.position != row.position:
                 player.team = team
@@ -65,6 +67,25 @@ class Command(BaseCommand):
                 f"말소 {len(result.cancelled)}명 처리, 신규 이벤트 {created}건 생성"
             )
         )
+
+    def _notify_team(self, team, player, event_type):
+        if event_type == RosterEvent.ACTIVE_1GUN:
+            emoji, title_label, body_verb = "⬆️", "1군 콜업!", "1군에 등록됐어요"
+        else:
+            emoji, title_label, body_verb = "⬇️", "2군행", "2군으로 말소됐어요"
+
+        position = player.get_position_display() or "-"
+        back_number = f"#{player.back_number} · " if player.back_number else ""
+
+        try:
+            send_push_to_team(
+                team,
+                title=f"{emoji} {player.name} {title_label}",
+                body=f"{team.name} · {back_number}{position} · {body_verb}",
+                url=f"/players/{player.id}/",
+            )
+        except Exception as exc:  # 푸시 발송 실패가 동기화 자체를 막으면 안 된다
+            self.stderr.write(f"{team.name} 푸시 발송 실패: {exc}")
 
     def _enrich_profile(self, player, team_name):
         """신규 선수에 한해 KBO 선수 조회 페이지에서 고유 코드/생년월일/사진 URL을 채운다."""
