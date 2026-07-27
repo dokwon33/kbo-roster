@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import base64
 import os
 from pathlib import Path
 
@@ -46,6 +47,15 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 # Render 무료 티어에는 Shell/Cron이 없어, 외부 무료 크론 서비스가 /sync/?token=... 을
 # 호출해 sync_roster를 트리거하는 방식으로 대체한다. 비어 있으면 /sync/ 엔드포인트가 항상 거부한다.
 SYNC_SECRET_TOKEN = os.environ.get("SYNC_SECRET_TOKEN", "")
+
+# 마이팀 웹 푸시 알림(Web Push)에 사용하는 VAPID 키 쌍.
+# VAPID_PRIVATE_KEY_B64 는 PEM 형식 개인키를 base64로 한 번 감싼 값(줄바꿈 없이 환경변수에 넣기 위함).
+_vapid_private_key_b64 = os.environ.get("VAPID_PRIVATE_KEY_B64", "")
+VAPID_PRIVATE_KEY_PEM = (
+    base64.b64decode(_vapid_private_key_b64).decode() if _vapid_private_key_b64 else ""
+)
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
 
 # 사용자 의견(피드백) 메일 발송용 SMTP 설정. EMAIL_HOST가 비어 있으면(로컬 개발 등)
 # 실제 발송 대신 콘솔에 출력만 하고, Feedback 레코드는 어느 쪽이든 DB에 남는다.

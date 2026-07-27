@@ -30,6 +30,8 @@
   .standings-table tbody tr.cutoff-row td { border-bottom: 2px solid #14213d; }
   .standings-table td.team-cell { text-align: left; font-weight: 600; color: #1c1e21; }
   .team-cell .team-name { display: inline-flex; align-items: center; gap: 6px; }
+  .team-name-link { color: inherit; text-decoration: none; }
+  .team-name-link:hover { text-decoration: underline; }
   .team-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
   .standings-table td.rank-cell { font-weight: 700; color: #14213d; }
   .standings-table tr.rank-1 td.rank-cell {
@@ -76,10 +78,10 @@
             </td>
             <td class="team-cell">
               <span class="team-name">
-                {% with logo=row.team|team_logo_url %}
+                {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
                   {% if logo %}<img class="team-logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                  {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
                 {% endwith %}
-                {{ row.team }}
               </span>
             </td>
             <td>{{ row.games }}</td>
