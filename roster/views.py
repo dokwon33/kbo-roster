@@ -72,6 +72,19 @@ def _attach_current_status(players):
     return players
 
 
+ROSTER_STALE_DAYS = 30
+
+
+def _drop_stale(players):
+    """마지막 변동으로부터 ROSTER_STALE_DAYS일이 지난 선수는 명단에서 제외한다.
+
+    로스터 명단은 '최근 변동 사항'을 보여주는 목적이라, 오래 방치된 선수가
+    실제 소속과 무관하게 계속 노출되는 것을 막는다.
+    """
+    cutoff = timezone.now().date() - timedelta(days=ROSTER_STALE_DAYS)
+    return [p for p in players if p.current_status and p.current_status.event_date >= cutoff]
+
+
 NEWS_SUMMARY_TTL = timedelta(hours=6)
 
 
@@ -209,7 +222,7 @@ def team_list(request):
     cards = []
     team_ids_by_name = {}
     for team in teams:
-        players = _attach_current_status(team.players.all())
+        players = _drop_stale(_attach_current_status(team.players.all()))
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
         cards.append({"team": team, "active": active_players, "others": others})
@@ -242,7 +255,7 @@ def team_list(request):
 @ensure_csrf_cookie
 def team_detail(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
-    players = _attach_current_status(team.players.all())
+    players = _drop_stale(_attach_current_status(team.players.all()))
     active_type = RosterEvent.ACTIVE_1GUN
     active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
     others = [p for p in players if p not in active_players]
@@ -301,7 +314,8 @@ def player_detail(request, player_id):
 
 
 def recent_events(request):
-    events = RosterEvent.objects.select_related("player", "team").all()[:100]
+    cutoff = timezone.now().date() - timedelta(days=ROSTER_STALE_DAYS)
+    events = RosterEvent.objects.select_related("player", "team").filter(event_date__gte=cutoff)[:100]
     return render(request, "roster/recent_events.html", {"events": events})
 
 
