@@ -155,3 +155,40 @@ class DailyStat(models.Model):
 
     def __str__(self):
         return f"{self.date} 방문 {self.page_views} / LLM {self.llm_calls}"
+
+
+class PredictionSubmission(models.Model):
+    """승부예측 이벤트의 하루치 응모 1건. 세션과 인스타그램 아이디 양쪽으로 중복 참여를 막는다."""
+
+    date = models.DateField()
+    instagram_id = models.CharField(max_length=50)
+    session_key = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["date", "instagram_id"], name="unique_instagram_per_day"),
+            models.UniqueConstraint(fields=["date", "session_key"], name="unique_session_per_day"),
+        ]
+
+    def __str__(self):
+        return f"{self.date} {self.instagram_id}"
+
+
+class PredictionPick(models.Model):
+    """응모 1건에 포함된 개별 경기 예측 (원정/홈 중 승리 예상 팀)."""
+
+    submission = models.ForeignKey(PredictionSubmission, on_delete=models.CASCADE, related_name="picks")
+    game_id = models.CharField(max_length=20, help_text="KBO 경기 고유 ID (G_ID)")
+    away_team = models.CharField(max_length=20)
+    home_team = models.CharField(max_length=20)
+    picked_team = models.CharField(max_length=20, help_text="away_team 또는 home_team 값 중 하나")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["submission", "game_id"], name="unique_pick_per_game"),
+        ]
+
+    def __str__(self):
+        return f"{self.away_team} vs {self.home_team} → {self.picked_team}"

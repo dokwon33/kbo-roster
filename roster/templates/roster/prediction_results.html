@@ -1,0 +1,61 @@
+{% extends "roster/base.html" %}
+{% block title %}승부예측 응모 목록 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  table.results-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; margin-bottom: 28px; }
+  table.results-table th, table.results-table td { padding: 8px 14px; text-align: left; font-size: 14px; vertical-align: top; }
+  table.results-table th { background: #f5f6f8; color: #64748b; font-weight: 600; }
+  table.results-table tr:not(:last-child) td { border-bottom: 1px solid #f0f1f3; }
+  table.results-table ul { margin: 0; padding-left: 18px; }
+  table.leaderboard-table td.rank { font-size: 18px; text-align: center; width: 40px; }
+  table.leaderboard-table td.correct { font-weight: 700; color: #14213d; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <h2>🏆 순위 (맞춘 개수 기준, 동점자는 먼저 참여한 순)</h2>
+  <table class="results-table leaderboard-table">
+    <thead>
+      <tr><th></th><th>인스타그램 아이디</th><th>맞춘 개수</th><th>첫 참여 시각</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in leaderboard %}
+        <tr>
+          <td class="rank">{% if entry.rank == 1 %}🥇{% elif entry.rank == 2 %}🥈{% else %}🥉{% endif %}</td>
+          <td>@{{ entry.instagram_id }}</td>
+          <td class="correct">{{ entry.correct }}개</td>
+          <td>{{ entry.first_created_at }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">아직 집계할 응모가 없음</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>전체 응모 목록</h2>
+  <table class="results-table">
+    <thead>
+      <tr><th>날짜</th><th>인스타그램 아이디</th><th>제출 시각</th><th>맞춘 개수</th><th>예측</th></tr>
+    </thead>
+    <tbody>
+      {% for s in submissions %}
+        <tr>
+          <td>{{ s.date }}</td>
+          <td>@{{ s.instagram_id }}</td>
+          <td>{{ s.created_at }}</td>
+          <td>{{ s.correct_count }}개</td>
+          <td>
+            <ul>
+              {% for pick in s.picks.all %}
+                <li>{{ pick.away_team }} vs {{ pick.home_team }} → {{ pick.picked_team }}</li>
+              {% endfor %}
+            </ul>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">응모 없음</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

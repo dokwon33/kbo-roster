@@ -3,7 +3,7 @@ import io
 import json
 import logging
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, time as dt_time, timedelta
 from pathlib import Path
 
 import requests
@@ -11,6 +11,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -19,7 +20,16 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_http_methods
 
 from . import llm, news, scraping
-from .models import DailyStat, Feedback, Player, PushSubscription, RosterEvent, Team
+from .models import (
+    DailyStat,
+    Feedback,
+    Player,
+    PredictionPick,
+    PredictionSubmission,
+    PushSubscription,
+    RosterEvent,
+    Team,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +457,160 @@ def feedback(request):
             sent = True
 
     return render(request, "roster/feedback.html", {"sent": sent})
+
+
+# 승부예측 이벤트 진행 기간. 1회성 캠페인이라 별도 모델 없이 상수로 관리한다.
+PREDICTION_START_DATE = date(2026, 7, 29)
+PREDICTION_END_DATE = date(2026, 8, 5)
+PREDICTION_GAMES_CACHE_TIMEOUT = 60 * 5
+
+
+def _prediction_window(now):
+    """오늘 승부예측 참여가 가능한 시간대인지 판단한다.
+
+    평일은 08:00~18:00, 주말(경기 시작이 이른 토/일)은 08:00~14:00까지만 받는다.
+    당일 경기 시작 전에 예측을 마감하기 위한 시간대라 요일마다 다르다.
+    """
+    is_weekend = now.weekday() >= 5
+    end_hour = 14 if is_weekend else 18
+    return dt_time(8, 0) <= now.time() < dt_time(end_hour, 0)
+
+
+def _render_prediction(request, state, **extra):
+    context = {
+        "state": state,
+        "event_start": PREDICTION_START_DATE,
+        "event_end": PREDICTION_END_DATE,
+        **extra,
+    }
+    return render(request, "roster/prediction.html", context)
+
+
+@require_http_methods(["GET", "POST"])
+def prediction(request):
+    now = timezone.localtime()
+    today = now.date()
+
+    if not (PREDICTION_START_DATE <= today <= PREDICTION_END_DATE):
+        return _render_prediction(request, "OUT_OF_PERIOD")
+
+    games = _cached_fetch(
+        f"prediction_games_{today.isoformat()}",
+        lambda: scraping.fetch_games_for_date(today),
+        timeout=PREDICTION_GAMES_CACHE_TIMEOUT,
+    )
+    if not games:
+        return _render_prediction(request, "NO_GAMES")
+
+    window_open = _prediction_window(now)
+
+    if not request.session.session_key:
+        request.session.save()
+    session_key = request.session.session_key
+
+    existing = PredictionSubmission.objects.filter(date=today, session_key=session_key).first()
+    if existing:
+        return _render_prediction(
+            request, "ALREADY_SUBMITTED", submission=existing, picks=existing.picks.all()
+        )
+
+    if request.method == "POST":
+        # 스팸 봇 방지용 허니팟 — feedback 뷰와 동일한 패턴.
+        if request.POST.get("website"):
+            return _render_prediction(request, "SUBMITTED")
+
+        if not window_open:
+            return _render_prediction(request, "WINDOW_CLOSED", games=games)
+
+        instagram_id = request.POST.get("instagram_id", "").strip().lstrip("@")
+        picks_by_game = {g.game_id: request.POST.get(f"pick_{g.game_id}", "") for g in games}
+        valid_picks = all(
+            picks_by_game[g.game_id] in (g.away_team, g.home_team) for g in games
+        )
+
+        if not instagram_id or not valid_picks:
+            return _render_prediction(request, "FORM_ERROR", games=games)
+
+        try:
+            with transaction.atomic():
+                submission = PredictionSubmission.objects.create(
+                    date=today, instagram_id=instagram_id, session_key=session_key
+                )
+                PredictionPick.objects.bulk_create(
+                    PredictionPick(
+                        submission=submission,
+                        game_id=g.game_id,
+                        away_team=g.away_team,
+                        home_team=g.home_team,
+                        picked_team=picks_by_game[g.game_id],
+                    )
+                    for g in games
+                )
+        except IntegrityError:
+            return _render_prediction(request, "DUPLICATE", games=games)
+
+        return _render_prediction(request, "SUBMITTED")
+
+    state = "OPEN" if window_open else "WINDOW_CLOSED"
+    return _render_prediction(request, state, games=games)
+
+
+def _winners_by_date(target_date):
+    """해당 날짜 실제 경기 결과에서 game_id → 승리팀 이름 맵을 만든다. 아직 안 끝난/취소된 경기는 제외."""
+    games = _cached_fetch(
+        f"prediction_actual_results_{target_date.isoformat()}",
+        lambda: scraping.fetch_games_for_date(target_date),
+        timeout=PREDICTION_GAMES_CACHE_TIMEOUT,
+    )
+    winners = {}
+    for g in games:
+        if g.is_ended and g.away_score != g.home_score:
+            winners[g.game_id] = g.away_team if g.away_score > g.home_score else g.home_team
+    return winners
+
+
+@require_GET
+def prediction_results(request):
+    """승부예측 응모 목록/순위 조회. 개발자 확인(추첨)용이라 /sync/와 동일한 토큰으로 보호한다.
+
+    순위는 인스타그램 아이디 기준으로 (같은 아이디로 여러 날 참여 가능하므로) 전체 기간 맞춘 개수를
+    합산해 정하고, 동점이면 먼저 참여한 사람을 우선한다.
+    """
+    expected = settings.SYNC_SECRET_TOKEN
+    provided = request.GET.get("token", "")
+    if not expected or not hmac.compare_digest(expected, provided):
+        return HttpResponseForbidden("forbidden")
+
+    submissions = list(PredictionSubmission.objects.prefetch_related("picks").all())
+
+    winners_cache = {}
+    totals = {}  # instagram_id -> {"correct": int, "first_created_at": datetime}
+    for submission in submissions:
+        if submission.date not in winners_cache:
+            winners_cache[submission.date] = _winners_by_date(submission.date)
+        winners = winners_cache[submission.date]
+
+        correct = sum(1 for pick in submission.picks.all() if winners.get(pick.game_id) == pick.picked_team)
+        submission.correct_count = correct
+
+        entry = totals.setdefault(
+            submission.instagram_id, {"correct": 0, "first_created_at": submission.created_at}
+        )
+        entry["correct"] += correct
+        entry["first_created_at"] = min(entry["first_created_at"], submission.created_at)
+
+    leaderboard = sorted(
+        ({"instagram_id": iid, **data} for iid, data in totals.items()),
+        key=lambda x: (-x["correct"], x["first_created_at"]),
+    )[:3]
+    for rank, entry in enumerate(leaderboard, start=1):
+        entry["rank"] = rank
+
+    return render(
+        request,
+        "roster/prediction_results.html",
+        {"submissions": submissions, "leaderboard": leaderboard},
+    )
 
 
 @require_GET

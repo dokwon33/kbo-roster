@@ -40,6 +40,15 @@
     }
     nav { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 0; margin-top: 10px; }
     nav a { color: #cbd5e1; margin-left: 16px; text-decoration: none; font-size: 14px; }
+    nav a.nav-event {
+      background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-weight: 700;
+      padding: 4px 12px; border-radius: 999px; animation: nav-event-pulse 2s ease-in-out infinite;
+    }
+    nav a.nav-event:hover { filter: brightness(1.08); }
+    @keyframes nav-event-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .45); }
+      50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+    }
     main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -121,6 +130,7 @@
       <a href="{% url 'roster:standings' %}">리그 순위</a>
       <a href="{% url 'roster:attendance_stats' %}">매진율 통계</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
+      <a class="nav-event" href="{% url 'roster:prediction' %}">🔥 승부예측</a>
       <a href="{% url 'roster:feedback' %}">의견 보내기</a>
       <button type="button" class="info-btn" onclick="document.getElementById('whatsNewDialog').showModal()">📢 업데이트 소식</button>
       <button type="button" class="info-btn" onclick="document.getElementById('notifyGuideDialog').showModal()">🔔 알림 받는 방법</button>

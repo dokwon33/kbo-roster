@@ -302,6 +302,9 @@ class GameResult:
     state: str  # GAME_STATE_SC: "3"=경기종료, "4"=취소 등
     cancel_reason: str
     stadium: str
+    game_time: str
+    away_pitcher: str  # 경기 전에는 예고 선발, 경기 후에는 그대로 해당 팀 선발투수
+    home_pitcher: str
     win_pitcher: str
     lose_pitcher: str
     save_pitcher: str
@@ -355,6 +358,9 @@ def fetch_games_for_date(target: date) -> list:
                 state=g.get("GAME_STATE_SC", ""),
                 cancel_reason=g.get("CANCEL_SC_NM", ""),
                 stadium=g.get("S_NM", ""),
+                game_time=g.get("G_TM", ""),
+                away_pitcher=(g.get("T_PIT_P_NM") or "").strip(),
+                home_pitcher=(g.get("B_PIT_P_NM") or "").strip(),
                 win_pitcher=(g.get("W_PIT_P_NM") or "").strip(),
                 lose_pitcher=(g.get("L_PIT_P_NM") or "").strip(),
                 save_pitcher=(g.get("SV_PIT_P_NM") or "").strip(),
