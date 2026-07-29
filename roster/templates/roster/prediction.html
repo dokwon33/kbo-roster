@@ -70,6 +70,24 @@
   .picks-summary { list-style: none; margin: 0; padding: 0; max-width: 560px; }
   .picks-summary li { padding: 8px 0; border-bottom: 1px solid #f0f1f3; font-size: 14px; display: flex; align-items: center; gap: 6px; }
   .picks-summary .team-logo-tiny { width: 18px; height: 18px; object-fit: contain; }
+
+  .my-picks { max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+  .my-pick-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; background: #fff; }
+  .my-pick-card.status-correct { border-color: #86efac; background: #f0fdf4; }
+  .my-pick-card.status-wrong { border-color: #fecaca; background: #fef2f2; }
+  .my-pick-card.status-live { border-color: #fca5a5; }
+  .my-pick-teams { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; }
+  .my-pick-team { display: flex; align-items: center; gap: 6px; flex: 1; opacity: .55; }
+  .my-pick-team.is-picked { opacity: 1; color: #14213d; }
+  .my-pick-team:last-child { justify-content: flex-end; }
+  .my-pick-score { flex: none; font-size: 13px; font-weight: 700; color: #64748b; min-width: 64px; text-align: center; }
+  .my-pick-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e7eb; font-size: 12px; color: #64748b; }
+  .my-pick-choice strong { color: #14213d; }
+  .my-pick-badge { font-weight: 700; }
+  .status-correct .my-pick-badge { color: #16a34a; }
+  .status-wrong .my-pick-badge { color: #dc2626; }
+  .status-live .my-pick-badge { color: #ef4444; }
+  .results-hint { max-width: 560px; font-size: 12px; color: #94a3b8; margin-top: 10px; }
 </style>
 {% endblock %}
 
@@ -116,16 +134,45 @@
 
   {% elif state == "ALREADY_SUBMITTED" %}
     <div class="prediction-done">오늘 이미 참여하셨습니다! (@{{ submission.instagram_id }})</div>
-    <ul class="picks-summary">
-      {% for pick in picks %}
-        <li>
-          {% with logo=pick.picked_team|team_logo_url %}
-            {% if logo %}<img class="team-logo-tiny" src="{{ logo }}" alt="">{% endif %}
-          {% endwith %}
-          {{ pick.away_team }} vs {{ pick.home_team }} → <strong>{{ pick.picked_team }}</strong> 승
-        </li>
+    <div class="my-picks">
+      {% for row in pick_rows %}
+        {% with pick=row.pick game=row.game status=row.status %}
+          <div class="my-pick-card status-{{ status }}">
+            <div class="my-pick-teams">
+              <span class="my-pick-team {% if pick.picked_team == pick.away_team %}is-picked{% endif %}">
+                {% with logo=pick.away_team|team_logo_url %}
+                  {% if logo %}<img class="team-logo-tiny" src="{{ logo }}" alt="">{% endif %}
+                {% endwith %}
+                {{ pick.away_team }}
+              </span>
+              <span class="my-pick-score">
+                {% if status == "pending" %}{{ game.game_time|default:"경기 전" }}
+                {% else %}{{ game.away_score }} : {{ game.home_score }}{% endif %}
+              </span>
+              <span class="my-pick-team {% if pick.picked_team == pick.home_team %}is-picked{% endif %}">
+                {{ pick.home_team }}
+                {% with logo=pick.home_team|team_logo_url %}
+                  {% if logo %}<img class="team-logo-tiny" src="{{ logo }}" alt="">{% endif %}
+                {% endwith %}
+              </span>
+            </div>
+            <div class="my-pick-footer">
+              <span class="my-pick-choice">내 예측: <strong>{{ pick.picked_team }}</strong> 승</span>
+              <span class="my-pick-badge">
+                {% if status == "pending" %}⏳ 경기 전
+                {% elif status == "live" %}🔴 진행 중
+                {% elif status == "correct" %}✅ 적중
+                {% elif status == "wrong" %}❌ 실패
+                {% elif status == "draw" %}➖ 무승부
+                {% elif status == "cancelled" %}🚫 경기 취소
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        {% endwith %}
       {% endfor %}
-    </ul>
+    </div>
+    <p class="results-hint">최종 결과는 그날 모든 경기가 끝난 뒤 확정돼요. 페이지를 새로고침하면 최신 스코어로 업데이트됩니다.</p>
 
   {% elif state == "SUBMITTED" %}
     <div class="prediction-done">예측 제출 완료! 참여해주셔서 감사합니다.</div>

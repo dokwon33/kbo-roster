@@ -476,6 +476,26 @@ def _prediction_window(now):
     return dt_time(8, 0) <= now.time() < dt_time(end_hour, 0)
 
 
+def _pick_status(game, picked_team):
+    """제출된 픽 하나가 지금 시점 기준으로 어떤 상태인지 판정한다.
+
+    아직 못 찾은 경기(game=None)나 시작 전 경기는 "pending", 진행 중이면 "live"(현재 스코어 표시),
+    종료면 "correct"/"wrong", 취소면 "cancelled", 동점으로 끝났으면(우천 콜드 등) "draw".
+    """
+    if game is None:
+        return "pending"
+    if game.is_cancelled:
+        return "cancelled"
+    if game.is_ended:
+        if game.away_score == game.home_score:
+            return "draw"
+        winner = game.away_team if game.away_score > game.home_score else game.home_team
+        return "correct" if picked_team == winner else "wrong"
+    if game.state == "1":
+        return "pending"
+    return "live"
+
+
 def _render_prediction(request, state, **extra):
     context = {
         "state": state,
@@ -510,9 +530,12 @@ def prediction(request):
 
     existing = PredictionSubmission.objects.filter(date=today, session_key=session_key).first()
     if existing:
-        return _render_prediction(
-            request, "ALREADY_SUBMITTED", submission=existing, picks=existing.picks.all()
-        )
+        games_by_id = {g.game_id: g for g in games}
+        pick_rows = []
+        for pick in existing.picks.all():
+            g = games_by_id.get(pick.game_id)
+            pick_rows.append({"pick": pick, "game": g, "status": _pick_status(g, pick.picked_team)})
+        return _render_prediction(request, "ALREADY_SUBMITTED", submission=existing, pick_rows=pick_rows)
 
     if request.method == "POST":
         # 스팸 봇 방지용 허니팟 — feedback 뷰와 동일한 패턴.
