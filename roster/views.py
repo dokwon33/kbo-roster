@@ -83,15 +83,16 @@ def _attach_current_status(players):
 
 
 ROSTER_STALE_DAYS = 30
+MAIN_PAGE_STALE_DAYS = 14  # 메인 페이지("구단별 1군/2군 변동")는 더 최근 변동만 보여주도록 팀 상세보다 짧게 잡음
 
 
-def _drop_stale(players):
-    """마지막 변동으로부터 ROSTER_STALE_DAYS일이 지난 선수는 명단에서 제외한다.
+def _drop_stale(players, days=ROSTER_STALE_DAYS):
+    """마지막 변동으로부터 days일이 지난 선수는 명단에서 제외한다.
 
     로스터 명단은 '최근 변동 사항'을 보여주는 목적이라, 오래 방치된 선수가
     실제 소속과 무관하게 계속 노출되는 것을 막는다.
     """
-    cutoff = timezone.now().date() - timedelta(days=ROSTER_STALE_DAYS)
+    cutoff = timezone.now().date() - timedelta(days=days)
     return [p for p in players if p.current_status and p.current_status.event_date >= cutoff]
 
 
@@ -232,7 +233,7 @@ def team_list(request):
     cards = []
     team_ids_by_name = {}
     for team in teams:
-        players = _drop_stale(_attach_current_status(team.players.all()))
+        players = _drop_stale(_attach_current_status(team.players.all()), days=MAIN_PAGE_STALE_DAYS)
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
         cards.append({"team": team, "active": active_players, "others": others})

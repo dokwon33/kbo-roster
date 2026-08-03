@@ -1,10 +1,12 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django import template
 
 from roster.models import RosterEvent
 
 register = template.Library()
+
+RECENT_EVENT_DAYS = 7
 
 
 @register.filter
@@ -49,6 +51,13 @@ def badge_class(event):
 @register.filter
 def status_label(event):
     return event.get_event_type_display() if event else "미상"
+
+
+@register.filter
+def is_recent_event(event):
+    if not event:
+        return False
+    return date.today() - event.event_date <= timedelta(days=RECENT_EVENT_DAYS)
 
 
 @register.filter

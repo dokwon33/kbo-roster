@@ -40,6 +40,13 @@
   .roster-table tbody tr:last-child td { border-bottom: none; }
   .roster-table .player-cell { display: flex; align-items: center; }
   .roster-table .empty-cell { color: #94a3b8; text-align: center; padding: 20px; }
+  .roster-table tr.is-recent { box-shadow: inset 3px 0 0 #2563eb; }
+  .roster-table tr.is-recent td:first-child { padding-left: 9px; }
+  .new-tag {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    background: #2563eb; color: #fff; font-size: 10px; font-weight: 700;
+    letter-spacing: .02em; vertical-align: middle;
+  }
 
   .push-btn {
     display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
@@ -79,7 +86,7 @@
       <table class="roster-table">
         <tr><th>이름</th><th>포지션</th><th>등번호</th><th>상태</th></tr>
         {% for player in active_players %}
-          <tr>
+          <tr class="{% if player.current_status|is_recent_event %}is-recent{% endif %}">
             <td>
               <span class="player-cell">
                 {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
@@ -88,7 +95,10 @@
             </td>
             <td>{{ player.position }}</td>
             <td>{{ player.back_number|default:"-" }}</td>
-            <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+            <td>
+              <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+              {% if player.current_status|is_recent_event %}<span class="new-tag">NEW</span>{% endif %}
+            </td>
           </tr>
         {% empty %}
           <tr><td class="empty-cell" colspan="4">없음</td></tr>

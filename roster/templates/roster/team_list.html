@@ -57,6 +57,14 @@
   .callup-team { font-size: 12px; font-weight: 400; color: #64748b; }
   .callup-stat-main { font-size: 20px; font-weight: 700; color: #1e3a8a; margin-top: 6px; }
   .callup-stat-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+  .card table tr.is-recent { box-shadow: inset 3px 0 0 #2563eb; }
+  .card table tr.is-recent td:first-child { padding-left: 9px; }
+  .new-tag {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    background: #2563eb; color: #fff; font-size: 10px; font-weight: 700;
+    letter-spacing: .02em; vertical-align: middle;
+  }
 </style>
 {% endblock %}
 
@@ -171,13 +179,16 @@
         <div class="table-scroll">
         <table>
           {% for player in card.active %}
-            <tr>
+            <tr class="{% if player.current_status|is_recent_event %}is-recent{% endif %}">
               <td>
                 {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
                 <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
               </td>
               <td>{{ player.position }}</td>
-              <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+              <td>
+                <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+                {% if player.current_status|is_recent_event %}<span class="new-tag">NEW</span>{% endif %}
+              </td>
             </tr>
           {% empty %}
             <tr><td colspan="3">1군 등록 선수 없음</td></tr>
@@ -189,13 +200,16 @@
           <div class="table-scroll">
           <table>
             {% for player in card.others %}
-              <tr>
+              <tr class="{% if player.current_status|is_recent_event %}is-recent{% endif %}">
                 <td>
                   {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
                   <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
                 </td>
                 <td>{{ player.position }}</td>
-                <td><span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span></td>
+                <td>
+                  <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
+                  {% if player.current_status|is_recent_event %}<span class="new-tag">NEW</span>{% endif %}
+                </td>
               </tr>
             {% endfor %}
           </table>
