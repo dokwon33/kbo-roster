@@ -461,8 +461,8 @@ def feedback(request):
 
 
 # 승부예측 이벤트 진행 기간. 1회성 캠페인이라 별도 모델 없이 상수로 관리한다.
-PREDICTION_START_DATE = date(2026, 7, 29)
-PREDICTION_END_DATE = date(2026, 8, 5)
+PREDICTION_START_DATE = date(2026, 8, 7)
+PREDICTION_END_DATE = date(2026, 8, 13)
 PREDICTION_GAMES_CACHE_TIMEOUT = 60 * 5
 
 
