@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.core.cache import cache
 from django.core.management.base import BaseCommand, CommandError
 
 from roster.models import Player, RosterEvent, Team
@@ -60,6 +61,10 @@ class Command(BaseCommand):
                 player.team = team
                 player.position = row.position
                 player.save(update_fields=["team", "position"])
+
+        # 리그 순위(승차 등)는 24시간짜리 캐시라 로스터 동기화 시점에 같이 지워
+        # 다음 조회 때 최신 경기 결과가 반영되게 한다.
+        cache.delete_many(["standings_1gun", "standings_2gun"])
 
         self.stdout.write(
             self.style.SUCCESS(

@@ -30,6 +30,7 @@ from .models import (
     RosterEvent,
     Team,
 )
+from .templatetags.roster_extras import RECENT_EVENT_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,9 @@ def team_list(request):
         players = _drop_stale(_attach_current_status(team.players.all()), days=MAIN_PAGE_STALE_DAYS)
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
-        cards.append({"team": team, "active": active_players, "others": others})
+        recent_cutoff = timezone.now().date() - timedelta(days=RECENT_EVENT_DAYS)
+        has_recent = any(p.current_status.event_date >= recent_cutoff for p in players if p.current_status)
+        cards.append({"team": team, "active": active_players, "others": others, "has_recent": has_recent})
         team_ids_by_name[team.name] = team.id
 
     latest_game_date, latest_games = _cached_fetch(
