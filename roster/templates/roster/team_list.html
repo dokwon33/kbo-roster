@@ -58,13 +58,56 @@
   .callup-stat-main { font-size: 20px; font-weight: 700; color: #1e3a8a; margin-top: 6px; }
   .callup-stat-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
 
-  .card table tr.is-recent { box-shadow: inset 3px 0 0 #2563eb; }
-  .card table tr.is-recent td:first-child { padding-left: 9px; }
   .new-tag {
     display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
     background: #2563eb; color: #fff; font-size: 10px; font-weight: 700;
     letter-spacing: .02em; vertical-align: middle;
   }
+
+  .team-nav-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;
+    margin-bottom: 28px;
+  }
+  .team-nav-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 16px 10px; text-decoration: none; color: inherit;
+    border: 1px solid transparent;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .team-nav-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,.12); transform: translateY(-3px); }
+  .team-nav-card:active { transform: translateY(-1px); }
+
+  .team-nav-card.has-recent {
+    background: linear-gradient(180deg, #eff6ff 0%, #fff 60%);
+    border-color: #bfdbfe;
+    box-shadow: 0 1px 3px rgba(37,99,235,.12), 0 0 0 1px rgba(37,99,235,.06);
+  }
+  .team-nav-card.has-recent:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 8px 20px rgba(37,99,235,.18);
+  }
+
+  .team-nav-logo-wrap { position: relative; display: inline-flex; margin-bottom: 4px; }
+  .team-nav-logo { width: 40px; height: 40px; object-fit: contain; transition: transform .15s ease; }
+  .team-nav-card:hover .team-nav-logo { transform: scale(1.08); }
+
+  .team-nav-new {
+    position: absolute; top: -7px; right: -16px; margin-left: 0; padding: 1px 6px; font-size: 9px;
+    box-shadow: 0 0 0 2px #fff;
+    animation: team-nav-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes team-nav-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .team-nav-new { animation: none; }
+  }
+
+  .team-nav-name { font-size: 15px; font-weight: 700; color: #14213d; }
+  .team-nav-count { font-size: 12px; color: #64748b; }
+  .team-nav-card.has-recent .team-nav-count { color: #2563eb; font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -98,6 +141,24 @@
       </div>
     </div>
   {% endif %}
+
+  <h2>구단별 1군/2군 변동</h2>
+  <div class="team-nav-grid">
+    {% for card in cards %}
+      <a class="team-nav-card{% if card.has_recent %} has-recent{% endif %}" href="{% url 'roster:team_detail' card.team.id %}">
+        <span class="team-nav-logo-wrap">
+          {% with logo=card.team.name|team_logo_url %}
+            {% if logo %}<img class="team-nav-logo" src="{{ logo }}" alt="" loading="lazy">{% endif %}
+          {% endwith %}
+          {% if card.has_recent %}<span class="new-tag team-nav-new">NEW</span>{% endif %}
+        </span>
+        <span class="team-nav-name">{{ card.team.name }}</span>
+        <span class="team-nav-count">1군 {{ card.active|length }}명 · 2군/기타 {{ card.others|length }}명</span>
+      </a>
+    {% empty %}
+      <p>아직 수집된 데이터가 없습니다. <code>python manage.py sync_roster</code> 를 실행해 보세요.</p>
+    {% endfor %}
+  </div>
 
   <div class="latest-games-section">
     <h2>
@@ -160,64 +221,5 @@
         <p class="no-games-note">최근 경기 결과를 불러올 수 없습니다.</p>
       {% endfor %}
     </div>
-  </div>
-
-  <h2>구단별 1군/2군 변동</h2>
-  <div class="grid">
-    {% for card in cards %}
-      <div class="card">
-        <h3>
-          <a class="player-link" href="{% url 'roster:team_detail' card.team.id %}">
-            {% with logo=card.team.name|team_logo_url %}
-              {% if logo %}<img class="team-logo-sm" src="{{ logo }}" alt="" loading="lazy">{% endif %}
-            {% endwith %}
-            {{ card.team.name }}
-          </a>
-        </h3>
-        <p>1군 {{ card.active|length }}명 · 2군/기타 {{ card.others|length }}명</p>
-        <p style="font-size:12px; color:#6b7280; margin-bottom:4px;">1군 등록</p>
-        <div class="table-scroll">
-        <table>
-          {% for player in card.active %}
-            <tr class="{% if player.current_status|is_recent_event %}is-recent{% endif %}">
-              <td>
-                {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
-                <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
-              </td>
-              <td>{{ player.position }}</td>
-              <td>
-                <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
-                {% if player.current_status|is_recent_event %}<span class="new-tag">NEW</span>{% endif %}
-              </td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="3">1군 등록 선수 없음</td></tr>
-          {% endfor %}
-        </table>
-        </div>
-        {% if card.others %}
-          <p style="font-size:12px; color:#6b7280; margin:12px 0 4px;">2군 / 말소 / 기타</p>
-          <div class="table-scroll">
-          <table>
-            {% for player in card.others %}
-              <tr class="{% if player.current_status|is_recent_event %}is-recent{% endif %}">
-                <td>
-                  {% if player.photo_url %}<img class="player-photo-sm" src="{{ player.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
-                  <a class="player-link" href="{% url 'roster:player_detail' player.id %}">{{ player.name }}</a>
-                </td>
-                <td>{{ player.position }}</td>
-                <td>
-                  <span class="badge {{ player.current_status|badge_class }}">{{ player.current_status|status_label }}</span>
-                  {% if player.current_status|is_recent_event %}<span class="new-tag">NEW</span>{% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </table>
-          </div>
-        {% endif %}
-      </div>
-    {% empty %}
-      <p>아직 수집된 데이터가 없습니다. <code>python manage.py sync_roster</code> 를 실행해 보세요.</p>
-    {% endfor %}
   </div>
 {% endblock %}
