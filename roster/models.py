@@ -148,13 +148,14 @@ class DailyStat(models.Model):
 
     date = models.DateField(unique=True)
     page_views = models.PositiveIntegerField(default=0)
+    unique_visitors = models.PositiveIntegerField(default=0)
     llm_calls = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["-date"]
 
     def __str__(self):
-        return f"{self.date} 방문 {self.page_views} / LLM {self.llm_calls}"
+        return f"{self.date} 방문 {self.page_views}(순 {self.unique_visitors}) / LLM {self.llm_calls}"
 
 
 class PredictionSubmission(models.Model):

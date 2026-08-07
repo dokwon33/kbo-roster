@@ -11,8 +11,10 @@ def _increment(field):
     DailyStat.objects.filter(date=today).update(**{field: F(field) + 1})
 
 
-def record_page_view():
+def record_page_view(is_unique_visitor=False):
     _increment("page_views")
+    if is_unique_visitor:
+        _increment("unique_visitors")
 
 
 def record_llm_call():

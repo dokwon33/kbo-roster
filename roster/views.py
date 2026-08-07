@@ -667,8 +667,23 @@ def stats(request):
         return HttpResponseForbidden("forbidden")
 
     all_stats = DailyStat.objects.all()
-    totals = all_stats.aggregate(page_views=Sum("page_views"), llm_calls=Sum("llm_calls"))
-    return render(request, "roster/stats.html", {"daily": all_stats[:30], "totals": totals})
+    totals = all_stats.aggregate(
+        page_views=Sum("page_views"), unique_visitors=Sum("unique_visitors"), llm_calls=Sum("llm_calls")
+    )
+    daily = list(all_stats[:30])
+    chart_data = [
+        {
+            "date": row.date.strftime("%m/%d"),
+            "unique_visitors": row.unique_visitors,
+            "page_views": row.page_views,
+        }
+        for row in reversed(daily)
+    ]
+    return render(
+        request,
+        "roster/stats.html",
+        {"daily": daily, "totals": totals, "chart_data": chart_data},
+    )
 
 
 @require_GET

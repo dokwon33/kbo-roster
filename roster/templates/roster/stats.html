@@ -10,11 +10,39 @@
   }
   .stats-totals .card .label { color: #64748b; font-size: 13px; }
   .stats-totals .card .value { color: #14213d; font-size: 24px; font-weight: 700; margin-top: 4px; }
+
+  .stats-chart-card {
+    background: #fff; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .stats-chart-card h3 { margin: 0 0 10px; font-size: 15px; color: #14213d; }
+  .stats-chart-legend { display: flex; gap: 16px; font-size: 12px; color: #64748b; margin-bottom: 8px; }
+  .stats-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .stats-chart-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .stats-chart-legend .dot.uv { background: #2563eb; }
+  .stats-chart-legend .dot.pv { background: #93c5fd; }
+  #stats-chart { width: 100%; height: 220px; display: block; }
+  #stats-chart .bar-pv { fill: #dbeafe; }
+  #stats-chart .bar-uv { fill: #2563eb; }
+  #stats-chart .axis-label { fill: #94a3b8; font-size: 9px; }
+  .stats-chart-empty { color: #64748b; font-size: 13px; }
+
   table.stats-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; }
   table.stats-table th, table.stats-table td { padding: 8px 14px; text-align: right; font-size: 14px; }
   table.stats-table th:first-child, table.stats-table td:first-child { text-align: left; }
   table.stats-table th { background: #f5f6f8; color: #64748b; font-weight: 600; }
   table.stats-table tr:not(:last-child) td { border-bottom: 1px solid #f0f1f3; }
+
+  .stats-methodology {
+    margin-top: 24px; background: #fff; border-radius: 10px; padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06); font-size: 13px; color: #475569; line-height: 1.7;
+  }
+  .stats-methodology h3 { margin: 0 0 10px; font-size: 15px; color: #14213d; }
+  .stats-methodology ul { margin: 0 0 10px 18px; padding: 0; }
+  .stats-methodology li { margin-bottom: 4px; }
+  .stats-methodology code {
+    background: #f5f6f8; padding: 1px 5px; border-radius: 4px; font-size: 12px;
+  }
 </style>
 {% endblock %}
 
@@ -22,7 +50,11 @@
   <h2>통계</h2>
   <div class="stats-totals">
     <div class="card">
-      <div class="label">누적 방문(페이지뷰)</div>
+      <div class="label">누적 순방문자</div>
+      <div class="value">{{ totals.unique_visitors|default:0 }}</div>
+    </div>
+    <div class="card">
+      <div class="label">누적 페이지뷰</div>
       <div class="value">{{ totals.page_views|default:0 }}</div>
     </div>
     <div class="card">
@@ -30,16 +62,110 @@
       <div class="value">{{ totals.llm_calls|default:0 }}</div>
     </div>
   </div>
+
+  <div class="stats-chart-card">
+    <h3>최근 30일 추이</h3>
+    <div class="stats-chart-legend">
+      <span><i class="dot uv"></i>순방문자</span>
+      <span><i class="dot pv"></i>페이지뷰</span>
+    </div>
+    {% if chart_data %}
+      <svg id="stats-chart"></svg>
+      {{ chart_data|json_script:"stats-chart-data" }}
+    {% else %}
+      <p class="stats-chart-empty">아직 표시할 데이터가 없습니다.</p>
+    {% endif %}
+  </div>
+
   <table class="stats-table">
     <thead>
-      <tr><th>날짜</th><th>방문(페이지뷰)</th><th>LLM 호출</th></tr>
+      <tr><th>날짜</th><th>순방문자</th><th>페이지뷰</th><th>LLM 호출</th></tr>
     </thead>
     <tbody>
       {% for row in daily %}
-        <tr><td>{{ row.date }}</td><td>{{ row.page_views }}</td><td>{{ row.llm_calls }}</td></tr>
+        <tr><td>{{ row.date }}</td><td>{{ row.unique_visitors }}</td><td>{{ row.page_views }}</td><td>{{ row.llm_calls }}</td></tr>
       {% empty %}
-        <tr><td colspan="3">데이터 없음</td></tr>
+        <tr><td colspan="4">데이터 없음</td></tr>
       {% endfor %}
     </tbody>
   </table>
+
+  <div class="stats-methodology">
+    <h3>집계 방식</h3>
+    <ul>
+      <li><strong>페이지뷰</strong>: 정적 파일(<code>/static/</code>)과 <code>/sync/</code>, <code>/stats/</code> 자체를 뺀 나머지 경로에 대해, 200 응답을 반환한 GET 요청마다 1씩 집계합니다. 새로고침이나 같은 사람의 재방문도 매번 카운트됩니다.</li>
+      <li><strong>순방문자</strong>: 방문자 식별용 쿠키(<code>vid</code>, 만료 1년, HttpOnly)를 기준으로 같은 방문자는 하루에 한 번만 집계합니다. 최초 방문 시 쿠키를 발급하고, 서버 캐시에 "오늘 이미 카운트했는지"를 24시간 동안 기록해 중복을 막습니다.</li>
+      <li><strong>봇 제외</strong>: User-Agent에 <code>bot</code>, <code>spider</code>, <code>crawl</code> 등 크롤러로 보이는 문자열이 있거나 User-Agent가 아예 없는 요청은 페이지뷰·순방문자 모두 집계에서 제외합니다.</li>
+      <li><strong>한계</strong>: 쿠키를 지우거나 다른 브라우저/기기로 접속하면 같은 사람이라도 별도 방문자로 잡힙니다. 서버 캐시는 메모리 기반이라 서버가 재시작되면(배포 등) 그날의 중복 방지 기록이 초기화되어, 재시작 직후에는 순방문자가 실제보다 살짝 부풀 수 있습니다. 정교한 봇 차단(검증된 크롤러 IP 대역, JS 챌린지 등)은 하지 않으므로 완전히 정확한 값은 아닌 근사치입니다.</li>
+    </ul>
+  </div>
+
+  {% if chart_data %}
+  <script>
+    (function () {
+      var data = JSON.parse(document.getElementById('stats-chart-data').textContent);
+      var svg = document.getElementById('stats-chart');
+      var width = svg.clientWidth || 600;
+      var height = 220;
+      var padding = { top: 10, right: 10, bottom: 20, left: 10 };
+      svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+      var maxVal = 1;
+      data.forEach(function (d) {
+        maxVal = Math.max(maxVal, d.page_views, d.unique_visitors);
+      });
+
+      var chartW = width - padding.left - padding.right;
+      var chartH = height - padding.top - padding.bottom;
+      var n = data.length;
+      var groupW = chartW / n;
+      var barW = Math.max(2, Math.min(14, groupW * 0.32));
+
+      var svgNs = 'http://www.w3.org/2000/svg';
+      var labelStep = Math.ceil(n / 8);
+
+      data.forEach(function (d, i) {
+        var groupX = padding.left + i * groupW + groupW / 2;
+        var pvH = (d.page_views / maxVal) * chartH;
+        var uvH = (d.unique_visitors / maxVal) * chartH;
+
+        var pvRect = document.createElementNS(svgNs, 'rect');
+        pvRect.setAttribute('class', 'bar-pv');
+        pvRect.setAttribute('x', groupX - barW);
+        pvRect.setAttribute('y', padding.top + chartH - pvH);
+        pvRect.setAttribute('width', barW);
+        pvRect.setAttribute('height', pvH);
+        pvRect.setAttribute('rx', 1.5);
+        svg.appendChild(pvRect);
+
+        var titlePv = document.createElementNS(svgNs, 'title');
+        titlePv.textContent = d.date + ' 페이지뷰 ' + d.page_views;
+        pvRect.appendChild(titlePv);
+
+        var uvRect = document.createElementNS(svgNs, 'rect');
+        uvRect.setAttribute('class', 'bar-uv');
+        uvRect.setAttribute('x', groupX);
+        uvRect.setAttribute('y', padding.top + chartH - uvH);
+        uvRect.setAttribute('width', barW);
+        uvRect.setAttribute('height', uvH);
+        uvRect.setAttribute('rx', 1.5);
+        svg.appendChild(uvRect);
+
+        var titleUv = document.createElementNS(svgNs, 'title');
+        titleUv.textContent = d.date + ' 순방문자 ' + d.unique_visitors;
+        uvRect.appendChild(titleUv);
+
+        if (i % labelStep === 0) {
+          var label = document.createElementNS(svgNs, 'text');
+          label.setAttribute('class', 'axis-label');
+          label.setAttribute('x', groupX);
+          label.setAttribute('y', height - 4);
+          label.setAttribute('text-anchor', 'middle');
+          label.textContent = d.date;
+          svg.appendChild(label);
+        }
+      });
+    })();
+  </script>
+  {% endif %}
 {% endblock %}
