@@ -41,7 +41,7 @@ _RELATED_LEAGUE = {
     RosterEvent.OPTIONED_2GUN: "1군",
 }
 
-CACHE_TIMEOUT = 60 * 60 * 24  # 리그 순위/매진율 통계는 하루 1회만 스크래핑하면 충분하다.
+CACHE_TIMEOUT = 60 * 60 * 24  # 매진율 통계 등은 하루 1회만 스크래핑하면 충분하다.
 # 경기 결과는 보통 밤 11시 전에 갈리기 때문에, 하루 캐시를 그대로 쓰면 마지막 방문 시점 기준으로
 # 다음날 같은 시각까지 어제 결과가 남아있을 수 있다. 그래서 훨씬 짧은 주기로 따로 캐시한다.
 GAME_RESULTS_CACHE_TIMEOUT = 60 * 15
@@ -334,8 +334,11 @@ def recent_events(request):
 
 
 def standings(request):
-    standings_1gun = _cached_fetch("standings_1gun", scraping.fetch_standings_1gun)
-    rows_2gun = _cached_fetch("standings_2gun", scraping.fetch_standings_2gun)
+    # 캐시 키에 날짜를 포함해, sync_roster(크론)가 실패하거나 건너뛰어도(경기 없는 날 포함)
+    # 날짜가 바뀌면 자동으로 새로 스크래핑하게 한다. 같은 날 안에서는 그대로 재사용해 부담을 줄인다.
+    today = date.today()
+    standings_1gun = _cached_fetch(f"standings_1gun_{today}", scraping.fetch_standings_1gun)
+    rows_2gun = _cached_fetch(f"standings_2gun_{today}", scraping.fetch_standings_2gun)
 
     standings_2gun = {
         "북부": [r for r in rows_2gun if r.division == "북부"],
