@@ -1,0 +1,331 @@
+[
+  {
+    "player_name": "김한결",
+    "category": "완전동명이인",
+    "summary": "최근 관련 기사를 찾을 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2223,
+      "completion_tokens": 17
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "김한중",
+    "category": "정상",
+    "summary": "두산 베어스의 우완 투수 김한중은 최근 1군 등록 명단에서 제외되었습니다. 여러 구단이 동시에 1군 엔트리에서 말소한 가운데, 김한중도 2군으로 이동한 것으로 확인되었습니다. 구단 관계자는 특별한 부상은 없으며, 관리 차원에서의 휴식 조치라고 설명했습니다. 이번 말소는 8월 3일~4일 사이에 발표된 여러 기사에서 동일하게 언급되었습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2361,
+      "completion_tokens": 178
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "김한홀",
+    "category": "정상",
+    "summary": "김한홀은 7월 22일 부산 사직구장에서 열리는 SSG전 앞두고 1군 엔트리에 등록되면서 급히 1군 복귀했다. 이어 7월 23일 경기에서는 희생플라이 후 홈으로 들어와 팀에 득점을 안겨 주며 활약했으며, 같은 달 초에는 폭염으로 인해 외야 훈련이 금지되는 등 팀 차원의 라인업 조정 속에서 1군·2군을 오갔다. 7월 25∼27일 사이에는 출근길에 리어카를 끄는 노인을 도와 화제가 되면서 팬들에게 따뜻한 이미지를 전했다. 그리고 8월 1일에는 폭염 상황에서 외야 전력 보강을 위해 김한홀을 2군으로 내리고 다른 외야수를 콜업하는 등 다시 팀 명단에서 제외되었다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2348,
+      "completion_tokens": 322
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "김헌곤",
+    "category": "부분오염_관련성낮음",
+    "summary": "삼성은 8월 3일(보도일 8월 4일) 1군 엔트리에서 외야수 김헌곤을 말소했다. 구단은 김헌곤의 몸 상태에 이상이 없으며 부상도 없다고 밝혔다. 김헌곤과 동시에 포수 강민호도 말소되었으며, 대신 포수 박세혁과 외야수 이진용이 1군에 콜업되었다. 이번 조치는 팀 전력 조정 차원에서 이뤄진 것으로 전해졌다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2383,
+      "completion_tokens": 184
+    },
+    "judge": {
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약은 김헌곤의 말소와 상태를 정확히 반영하지만, ‘팀 전력 조정 차원’이라는 추론은 원문에 명시되지 않음"
+    }
+  },
+  {
+    "player_name": "도태훈",
+    "category": "정상",
+    "summary": "도태훈은 최근 1군 등록 명단에서 제외돼 2군으로 내려갔습니다. 구단은 부상은 없으며 관리 차원이라고 밝혔습니다. 이번 시즌 67경기에 출전해 타율 0.159, 11안타, 8타점, 18삼진, 10볼넷을 기록했습니다. 앞으로 2군에서 경기력을 회복해 1군 복귀를 노릴 전망입니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2362,
+      "completion_tokens": 152
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "박세혁",
+    "category": "부분오염_무관기사",
+    "summary": "삼성은 최근 NC 다이노스와의 트레이드로 통산 1 000경기 경험을 가진 베테랑 포수 박세혁을 영입했습니다. 영입 후 박세혁은 1군 등록되어 9회말 경기 등에 투입되었고, 팀 내 젊은 포수들에게 멘토 역할을 하고 있다는 평가를 받았습니다. 한편, 올 시즌 포수 FA 시장에 나올 가능성 있는 선수로 거론되며 구단들의 관심이 집중되고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2345,
+      "completion_tokens": 180
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "박정훈",
+    "category": "완전동명이인",
+    "summary": "최근 관련 기사를 찾을 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2256,
+      "completion_tokens": 17
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "백승현",
+    "category": "부분오염_무관기사",
+    "summary": "2026년 8월 4일, LG는 투수 김윤식과 포수 김민수를 2군으로 강등하고 투수 백승현을 1군에 콜업했습니다. 백승현은 그 날 경기에서 투입돼 겨우 한 이닝을 소화했으며 현재 방어율은 10.93으로 기록되었습니다. 이후 LG는 백승현을 포함한 새로운 라인업을 공개하며 팀 전력을 정비하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2421,
+      "completion_tokens": 170
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "알칸타라",
+    "category": "리그혼입",
+    "summary": "라울 알칸타라는 오른쪽 팔꿈치 통증으로 8월 22일 삼성전에서 조기 강판당한 뒤 재활에 전념하고 있었다. 키움은 그가 8월 12일 LG전부터 선발 마운드에 복귀할 준비가 되었다고 발표했으며, 10승을 기록한 주요 선발 중 하나로 여전히 팀의 핵심 축이다. 최근 기사에서는 알칸타라가 1·2·3선발 라인업에 포함돼 팀이 최하위 탈출을 노리는 데 중요한 역할을 할 것으로 기대된다고 전했다. 그의 복귀가 확정되면 키움의 투수진 전력이 한층 강화될 전망이다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2381,
+      "completion_tokens": 263
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "양우진",
+    "category": "정상",
+    "summary": "양우진은 2026년 드래프트 1라운드로 LG에 입단한 신인 우완 투수다. 7월 26일 한화 이글스전에서 프로 데뷔를 했지만 ⅔이닝에 3실점(자책점 2.00)하며 고전을 보였다. 이후 카라스코가 1군 엔트리에 등록되면서 2군으로 강등됐지만, 염경엽 감독은 “체력 문제가 아니다”라며 장기 육성 방침을 유지하고 앞으로 5선발 후보로 계속 기회를 줄 것이라고 밝혔다. 또한 그는 시속 150km 파워피처로 성장할 잠재력을 인정받아 박시원과 함께 내년 5선발 라인업에 이름을 올릴 수도 있다는 기대를 받고 있다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2328,
+      "completion_tokens": 289
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "오선우",
+    "category": "정상",
+    "summary": "KIA는 8월 1일 박상준을 2군으로 내리고 유틸리티 선수 오선우를 1군에 등록해 콜업했습니다. 그러나 같은 날부터 연속 폭염으로 경기가 취소되면서 오선우는 1주일 넘게 훈련만 하고 실제 경기 출전은 못 하고 있습니다. 팀은 오선우가 외야와 내야를 모두 소화할 수 있는 다재다능함으로 김호령 등 주요 타자들의 체력 부담을 덜어주고, 후반기 타선에 새로운 활력을 불어넣길 기대하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2307,
+      "completion_tokens": 209
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "이로운",
+    "category": "완전동명이인",
+    "summary": "최근 관련 기사를 찾을 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2287,
+      "completion_tokens": 17
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "이용준",
+    "category": "완전동명이인",
+    "summary": "최근 관련 기사를 찾을 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2144,
+      "completion_tokens": 17
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 올바르게 '관련 기사 없음'을 전달함"
+    }
+  },
+  {
+    "player_name": "이진하",
+    "category": "완전동명이인",
+    "summary": "최근 관련 기사를 찾을 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2271,
+      "completion_tokens": 17
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "이형범",
+    "category": "정상",
+    "summary": "이형범은 7월 23일 KIA와 한화 간의 트레이드로 한화 이글스에 영입되었습니다. 영입 후 3경기에 출장했지만 1.2이닝에 6실점을 기록해 ERA가 21.60에 달했고, 곧 2군으로 강등되었습니다. 트레이드 전 KIA에서는 19경기 24이닝에 평균자책점 3.00을 유지하며 불펜 역할을 맡았던 것으로 알려졌습니다. 현재 한화에서는 불펜 안정화에 어려움을 겪고 있는 상황입니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2286,
+      "completion_tokens": 206
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "카라스코",
+    "category": "외국인클린",
+    "summary": "LG 트윈스에 새로 영입된 외국인 투수 카를로스 카라스코는 8월 9일 KBO 데뷔전에서 7이닝 74구 퍼펙트 피칭을 선보이며 큰 기대를 모았다. 그러나 7회 말 투구를 마친 직후 실점하면서 경기 결과는 허망한 무승부로 끝났다. 이 같은 활약을 바탕으로 팀은 8월 11일부터 이어지는 하위권 팀들과의 연속 6연전에서 분위기 반전을 노리고 있다. 카라스코는 메이저리그에서 112승을 기록한 베테랑 투수로, 이번 완벽 투구가 팀의 전반기 부진을 털어내는 계기가 되길 기대한다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": true,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2388,
+      "completion_tokens": 271
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "타케다",
+    "category": "외국인클린",
+    "summary": "SSG 랜더스의 타케다 쇼타는 전반기 15경기에서 1승 7패, 평균자책점 7.43으로 큰 부진을 보였다. 후반기 들어 최근 3경기에서 5이닝 이상을 소화하며 평균자책점 4.60으로 상승하고 1승을 추가했다. 이 같은 회복세로 교체 논의가 줄어들고, 팀 내 선발 자원으로 비교적 안정적인 활약을 이어가고 있다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2398,
+      "completion_tokens": 174
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "하영민",
+    "category": "부분오염_관련성낮음",
+    "summary": "키움의 토종 선발 하영민은 최근 고관절 부상과 좌측 대퇴직근건염 진단을 받아 1군 엔트리에서 말소됐지만 구단은 큰 부상이 아니라며 회복에 집중하고 있다. 폭염으로 리그가 일시 중단되는 사이에도 그는 4일 사직 롯데전 선발 등판 후 좌측에 통증을 호소해 휴식을 취했다. 감독은 최근 경기에서 2사에서 볼넷을 많이 줬던 점을 아쉬워했으며, 하영민은 알칸타라·안우진과 함께 1~3선발을 잡아 마운드 운용의 핵심으로 기대되고 있다. 팀은 충분한 휴식 후 다음 3연전에서 복귀할 가능성을 검토하고 있다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2389,
+      "completion_tokens": 295
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  },
+  {
+    "player_name": "한두솔",
+    "category": "정상",
+    "summary": "SSG 랜더스의 좌완 불펜 투수 한두솔은 8월 1일과 2일 연속으로 1이닝씩 무실점 투구를 기록하며 키움 전에서 팀 승리에 기여했습니다. 같은 날 경기 후에는 동료 이지영에게 장난으로 ‘꿀밤’ 맞는 모습이 포착되었습니다. 그러나 7월 20일‑21일 사이에는 한두솔이 1군 엔트리에서 제외되고 2군으로 내려가면서 부진 논란이 이어졌으며, 7월 29일에는 SSG 퓨처스팀 경기에서 1이닝 무실점 투구를 보여 재기 의지를 보였습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2402,
+      "completion_tokens": 249
+    },
+    "judge": {
+      "error": "429 재시도 초과"
+    }
+  }
+]

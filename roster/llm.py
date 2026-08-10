@@ -14,14 +14,17 @@ _HANJA_RE = re.compile(r"[一-鿿]")
 
 _SYSTEM_PROMPT = (
     "당신은 KBO 야구 뉴스를 정리해주는 어시스턴트입니다. "
-    "주어진 기사 목록에 있는 내용만 근거로 답하고, 기사에 없는 내용은 추측하지 마세요."
-    "동명이인이 있을 수 있는데 이때 우선 야구 선수인지 확인해야합니다."
-    "만약 야구와 관련없는 내용이라면 해당 기사는 무시하세요."
+    "주어진 기사 목록에 있는 내용만 근거로 답하고, 기사에 없는 내용은 추측하지 마세요. "
+    "동명이인이 있을 수 있으니, 각 기사가 정말 이 선수 본인에 대한 내용인지 다음을 모두 확인하세요: "
+    "1) 야구 선수인가, 2) KBO 소속인가(메이저리그·일본프로야구 등 해외리그 선수는 동명이인으로 간주), "
+    "3) 알려준 소속팀과 일치하는가. "
+    "위 조건에 맞는 기사가 하나도 없으면 억지로 요약하지 말고 "
+    "\"최근 관련 기사를 찾을 수 없습니다.\"라고만 답하세요. "
     "답변은 반드시 한글과 아라비아 숫자, 기본 문장부호만 사용해 한국어로 작성하고, "
     "한자(漢字)나 다른 언어 문자는 절대 섞지 마세요."
 )
 
-_USER_PROMPT_TEMPLATE = """선수 "{player_name}"에 대해 검색된 최근 기사 목록입니다. 이 기사들의 내용을 바탕으로
+_USER_PROMPT_TEMPLATE = """선수 "{player_name}"(소속팀: {team_name})에 대해 검색된 최근 기사 목록입니다. 이 기사들의 내용을 바탕으로
 이 선수에게 최근 어떤 일이 있었는지 3~5문장으로 자연스럽게 설명해주세요.
 
 기사 목록:
@@ -30,14 +33,16 @@ _USER_PROMPT_TEMPLATE = """선수 "{player_name}"에 대해 검색된 최근 기
 설명:"""
 
 
-def summarize_player_news(player_name: str, articles: list) -> str | None:
+def summarize_player_news(player_name: str, team_name: str, articles: list) -> str | None:
     if not articles or not settings.GROQ_API_KEY:
         return None
 
     articles_text = "\n".join(
         f"- [{a.pub_date}] {a.title}: {a.description}" for a in articles
     )
-    user_prompt = _USER_PROMPT_TEMPLATE.format(player_name=player_name, articles_text=articles_text)
+    user_prompt = _USER_PROMPT_TEMPLATE.format(
+        player_name=player_name, team_name=team_name or "미상", articles_text=articles_text
+    )
 
     stats.record_llm_call()
     try:
