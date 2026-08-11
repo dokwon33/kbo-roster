@@ -23,6 +23,7 @@ from . import llm, news, scraping
 from .models import (
     DailyStat,
     Feedback,
+    NewsSummaryLog,
     Player,
     PredictionPick,
     PredictionSubmission,
@@ -127,6 +128,14 @@ def _get_news_summary(player):
             {"title": a.title, "description": a.description, "link": a.link, "pub_date": a.pub_date}
             for a in articles
         ]
+        if articles:
+            NewsSummaryLog.objects.create(
+                player_name=player.name,
+                team_name=team_name or "",
+                prompt_version=llm.PROMPT_VERSION,
+                articles=player.news_articles_cache,
+                summary=summary or "",
+            )
     player.news_summary_updated_at = timezone.now()
     player.save(update_fields=["news_summary", "news_articles_cache", "news_summary_updated_at"])
 

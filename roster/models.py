@@ -59,6 +59,24 @@ class Player(models.Model):
         return self.events.order_by("-event_date", "-id").first()
 
 
+class NewsSummaryLog(models.Model):
+    """뉴스 요약을 새로 생성할 때마다 남기는 기록. Player의 캐시 필드는 TTL마다 덮어써지므로,
+    프롬프트 실험(golden set 확장 등)에 쓸 수 있도록 이력을 별도로 쌓아둔다."""
+
+    player_name = models.CharField(max_length=50)
+    team_name = models.CharField(max_length=20, blank=True)
+    prompt_version = models.CharField(max_length=10)
+    articles = models.JSONField(default=list)
+    summary = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d} {self.player_name} ({self.prompt_version})"
+
+
 class RosterEvent(models.Model):
     ACTIVE_1GUN = "ACTIVE_1GUN"
     OPTIONED_2GUN = "OPTIONED_2GUN"

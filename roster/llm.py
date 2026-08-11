@@ -8,6 +8,9 @@ from . import stats
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+# 프롬프트를 바꿀 때마다 올려서 NewsSummaryLog에 함께 남긴다 (버전별 비교용).
+PROMPT_VERSION = "v1"
+
 # 다국어 모델이 한국어 생성 중 한자를 섞어 쓰는 경우가 있어, 프롬프트 지시와 별개로
 # CJK 통합 한자 영역(한글이 아닌 한자)을 후처리로 한 번 더 제거한다.
 _HANJA_RE = re.compile(r"[一-鿿]")
