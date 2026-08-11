@@ -9,6 +9,7 @@ from django.conf import settings
 NAVER_NEWS_SEARCH_URL = "https://openapi.naver.com/v1/search/news.json"
 
 _TAG_RE = re.compile(r"<[^>]+>")
+_HANJA_RE = re.compile(r"[一-鿿]")
 
 
 def _clean_text(text: str) -> str:
@@ -23,14 +24,19 @@ class NewsArticle:
     pub_date: str
 
 
-def fetch_player_news(query: str, display: int = 10) -> list:
-    """선수 이름으로 네이버 뉴스를 검색해 최신순으로 반환한다."""
+def fetch_player_news(player_name: str, team_name: str = None, display: int = 10) -> list:
+    """선수 이름(+소속팀)으로 네이버 뉴스를 검색해 최신순으로 반환한다.
+
+    검색어에 소속팀을 함께 넣어 동명이인·해외리그 동명 선수 기사가 덜 걸리도록 하고,
+    한자가 섞인 기사(주로 번역·해외 매체발 저품질 기사)는 사전에 제외한다.
+    """
     if not settings.NAVER_CLIENT_ID or not settings.NAVER_CLIENT_SECRET:
         return []
 
+    query = f"{player_name} {team_name}" if team_name else player_name
     resp = requests.get(
         NAVER_NEWS_SEARCH_URL,
-        params={"query": query, "display": display, "sort": "date"},
+        params={"query": query, "display": display * 2, "sort": "date"},
         headers={
             "X-Naver-Client-Id": settings.NAVER_CLIENT_ID,
             "X-Naver-Client-Secret": settings.NAVER_CLIENT_SECRET,
@@ -39,7 +45,7 @@ def fetch_player_news(query: str, display: int = 10) -> list:
     )
     resp.raise_for_status()
     items = resp.json().get("items", [])
-    return [
+    articles = [
         NewsArticle(
             title=_clean_text(item.get("title", "")),
             description=_clean_text(item.get("description", "")),
@@ -48,3 +54,5 @@ def fetch_player_news(query: str, display: int = 10) -> list:
         )
         for item in items
     ]
+    articles = [a for a in articles if not _HANJA_RE.search(a.title + a.description)]
+    return articles[:display]

@@ -114,13 +114,13 @@ def _get_news_summary(player):
     if not is_stale:
         return player.news_summary, player.news_articles_cache
 
+    team_name = player.team.name if player.team else None
     try:
-        articles = news.fetch_player_news(player.name)
+        articles = news.fetch_player_news(player.name, team_name)
     except requests.RequestException:
         articles = None
 
     if articles is not None:
-        team_name = player.team.name if player.team else None
         summary = llm.summarize_player_news(player.name, team_name, articles) if articles else None
         player.news_summary = summary or ""
         player.news_articles_cache = [
