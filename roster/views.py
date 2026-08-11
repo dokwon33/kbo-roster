@@ -120,7 +120,9 @@ def _get_news_summary(player):
         articles = None
 
     if articles is not None:
-        player.news_summary = (llm.summarize_player_news(player.name, articles) if articles else None) or ""
+        team_name = player.team.name if player.team else None
+        summary = llm.summarize_player_news(player.name, team_name, articles) if articles else None
+        player.news_summary = summary or ""
         player.news_articles_cache = [
             {"title": a.title, "description": a.description, "link": a.link, "pub_date": a.pub_date}
             for a in articles

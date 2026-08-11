@@ -1,0 +1,382 @@
+[
+  {
+    "player_name": "김한결",
+    "category": "완전동명이인",
+    "summary": "제공된 기사들에 김한결이라는 이름이 등장하지만, 모두 드라마 ‘아파트’의 등장인물이나 영상 취재·편집 작업과 관련된 내용입니다. 해당 기사에서는 야구와 관련된 어떤 사건이나 활동에 대한 언급이 없습니다. 따라서 최근 김한결 선수가 야구계에서 겪은 일에 대해서는 확인할 수 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2094,
+      "completion_tokens": 146
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 정확히 관련 기사 부재를 언급함"
+    }
+  },
+  {
+    "player_name": "김한중",
+    "category": "정상",
+    "summary": "두산 베어스의 우완 투수 김한중은 2026년 8월 3일(월)과 4일(화)에 1군 등록 명단에서 제외되었습니다. 그는 이번 시즌 3경기에 등판해 승패 없이 평균자책점 3.00과 3개의 삼진을 기록했습니다. 부상은 발견되지 않았으며, 구단은 관리 차원에서 그를 2군으로 이동시키기로 결정했습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2233,
+      "completion_tokens": 162
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 정확히 일치하고, 올바른 인물에 초점을 맞춤"
+    }
+  },
+  {
+    "player_name": "김한홀",
+    "category": "정상",
+    "summary": "롯데는 7월 중순에 김한홀을 1군 외야수 엔트리에 등록해 콜업했습니다. 23일 경기 9회말에 김한홀이 홈으로 들어와 팀에 한 점을 추가했으며, 같은 기간 그는 부산 사직야구장 출근길에 리어카를 끄는 노인을 도와 지역 사회에서 화제를 모았습니다. 8월 1일 폭염으로 훈련이 취소되면서 롯데는 김한홀을 1군 명단에서 내렸습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2219,
+      "completion_tokens": 189
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하고 김한홀에만 집중했습니다."
+    }
+  },
+  {
+    "player_name": "김헌곤",
+    "category": "부분오염_관련성낮음",
+    "summary": "삼성은 8월 3일(현지 시간) 베테랑 포수 강민호와 외야수 김헌곤을 1군 엔트리에서 말소했다. 구단은 두 선수 모두 신체에 이상이 없다고 밝히며, 부상이나 컨디션 문제는 없었다고 설명했다. 말소된 자리에는 포수 박세혁과 외야수 이진용을 콜업해 보강했으며, 이번 조치는 특별한 부상 없이 전략적 판단에 따른 것으로 보인다. 김헌곤은 향후 2군에서 경기력을 유지할 가능성이 제기되고 있다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2254,
+      "completion_tokens": 223
+    },
+    "judge": {
+      "faithfulness": 3,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 김헌곤의 2군 가능성 언급이 원문에 없어 약간 허위가 포함되었습니다."
+    }
+  },
+  {
+    "player_name": "도태훈",
+    "category": "정상",
+    "summary": "NC 다이노스의 내야수 도태훈이 1군 등록 명단에서 제외되었습니다. 구단은 그를 2군으로 보내기로 결정했으며, 부상 관련 특별한 언급은 없었습니다. 이번 시즌 그는 67경기에 출전해 타율 0.159, 11안타, 8타점, 18삼진, 10볼넷을 기록했습니다. 현재 도태훈은 2군에서 활약하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2236,
+      "completion_tokens": 160
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 정확히 일치함"
+    }
+  },
+  {
+    "player_name": "박세혁",
+    "category": "부분오염_무관기사",
+    "summary": "최근 NC와 트레이드로 삼성에 영입된 베테랑 포수 박세혁은 1군에 등록돼 9일 경기에서도 포수로 등판했습니다. 지난 10경기에서는 타율 0.243에 홈런 없이 8타점·5득점을 기록했습니다. 삼성은 박세혁을 중심으로 장승현·김도환 등과 포수진을 보강했으며, 올 시즌 FA 시장에도 박세혁이 나올 가능성을 언급하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2216,
+      "completion_tokens": 178
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하고 박세혁에 집중함"
+    }
+  },
+  {
+    "player_name": "박정훈",
+    "category": "완전동명이인",
+    "summary": "최근 골프계에서 박정훈 프로는 장은수 선수를 코치하며 큰 주목을 받고 있습니다. 박정훈 코치는 장은수가 “끝까지 해보자”는 격려의 말을 전했고, 장은수는 10년 만에 첫 우승을 차지했습니다. 이 우승 소감에서도 장은수는 박정훈 프로의 조언과 격려가 없었다면 포기했을 것이라고 밝히며 감사의 뜻을 전했습니다. 따라서 박정훈은 최근 골프 신인들의 멘탈을 끌어올리는 핵심 코치로 활약하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2127,
+      "completion_tokens": 231
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": false,
+      "relevance": 1,
+      "notes": "요약이 요청한 키움 야구 선수와 무관한 골프 코치 내용"
+    }
+  },
+  {
+    "player_name": "백승현",
+    "category": "부분오염_무관기사",
+    "summary": "LG는 2026년 8월 4일에 투수 백승현을 2군에서 1군으로 콜업했습니다. 같은 날 그는 경기에서 한 이닝만 투입돼 마무리 역할을 맡았습니다. 이번 승격은 김윤식·김민수의 2군 전락으로 인한 투수진 보강 차원에서 이루어졌습니다. 백승현의 등판은 팀이 연속 패배와 낮은 승률에 시달리던 시점에서 이뤄졌습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2295,
+      "completion_tokens": 180
+    },
+    "judge": {
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약은 핵심 사실을 담았지만 '마무리 역할'은 원문에 없어서 약간 과장됨"
+    }
+  },
+  {
+    "player_name": "알칸타라",
+    "category": "리그혼입",
+    "summary": "라울 알칸타라는 오른쪽 팔꿈치 통증으로 8월 22일 삼성전에서 조기 강판된 뒤 재활에 전념했으며, 12일 LG전부터 선발 마운드에 복귀할 준비가 완료되었습니다. 이번 시즌 10승을 기록한 그는 키움의 1~3선발 핵심으로 평가받고 있습니다.  \n\n한편, 마이애미 말린스의 샌디 알칸타라는 9일 로스앤젤레스와의 경기에서 7이닝 3피안타 1실점 투구를 펼쳐 163⅔이닝을 돌파했으며, 이는 2026년 시즌에 가장 먼저 규정 이닝을 충족한 기록이자 구단 역사상 새로운 이닝 최선두가 되었습니다. 그는 몸이 좋지 않은 상태에서도 8이닝 1실점 투구를 기록하며 투지와 체력을 인정받고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": true,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2252,
+      "completion_tokens": 347
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": false,
+      "relevance": 2,
+      "notes": "요약에 키움 라울 알칸타라와 마이애미 샌디 알칸타라를 혼합해 요청 선수와 무관한 내용이 포함돼 있음"
+    }
+  },
+  {
+    "player_name": "양우진",
+    "category": "정상",
+    "summary": "양우진은 2026년 신인드래프트 1라운드로 LG 트윈스에 지명된 우완 투수이다. 7월 26일 한화 이글스전에서 프로 데뷔를 했으며 ⅔이닝에 3실점(2자책점)으로 고전했다. 이후 카라스코가 1군에 등록되면서 양우진은 2군으로 강등됐지만, 염경엽 감독은 그를 5선발 후보로 계속 육성하겠다고 밝혔다. 최근 경기에서도 필승조 투입에도 불구하고 실점에 참여하는 등 어려움을 겪고 있다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2202,
+      "completion_tokens": 226
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하며, 대상 선수를 정확히 다루고 있음"
+    }
+  },
+  {
+    "player_name": "오선우",
+    "category": "정상",
+    "summary": "오선우는 8월 1일 KIA 타이거즈 1군에 콜업돼 박상준을 2군으로 내보내고 유틸리티 선수로 등록되었습니다. 그는 좌타자로 1루와 외야를 모두 소화할 수 있는 멀티 포지션 자원으로 평가받으며, 초반에는 1루 고정을 시도했지만 필요에 따라 외야로도 배치될 예정입니다. 그러나 연이어 발생한 폭염으로 경기 일정이 취소되면서, 오선우는 1주일 넘게 훈련만 하고 실제 출전 기회는 아직 제한된 상황입니다. 부상 복귀 후 첫 1군 복귀이지만, 팀은 그의 타격과 수비가 후반기 타선에 힘이 될 수 있을지 주목하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2180,
+      "completion_tokens": 276
+    },
+    "judge": {
+      "faithfulness": 3,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 부상 복귀 언급은 원문에 없으며 약간의 허구가 포함됨"
+    }
+  },
+  {
+    "player_name": "이로운",
+    "category": "완전동명이인",
+    "summary": "제공된 기사 목록에는 야구 선수 이로운에 관한 내용이 포함되어 있지 않습니다. 따라서 이 선수와 관련된 최근 사건을 확인할 수 없습니다. 다른 자료를 찾아보시길 권합니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2160,
+      "completion_tokens": 77
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 적절히 거절했음"
+    }
+  },
+  {
+    "player_name": "이용준",
+    "category": "완전동명이인",
+    "summary": "최근 기사에서는 ‘이용준’이라는 이름이 여러 번 등장하지만, 모두 야구 선수와는 관계가 없습니다. 이용준은 연합뉴스TV 영상취재·편집을 맡은 기자·편집자로 나오고, 한 기사에서는 해킹·보안학과 교수로, 또 다른 기사에서는 교회 활동 인물로 소개됩니다. 따라서 현재로서는 이용준 선수에 대한 최신 소식이 기사에 포함되어 있지 않습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2018,
+      "completion_tokens": 173
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문과 정확히 일치하며, 선수와 무관한 인물임을 명확히 밝혔습니다."
+    }
+  },
+  {
+    "player_name": "이진하",
+    "category": "완전동명이인",
+    "summary": "제공된 기사들은 모두 정치·경제 분야의 기자 이진하님의 보도 내용이며, 야구 선수 이진하와 관련된 정보는 포함되어 있지 않습니다. 따라서 최근 이진하 선수에게 어떤 일이 있었는지 알려드릴 자료가 없습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": false
+    },
+    "tokens": {
+      "prompt_tokens": 2142,
+      "completion_tokens": 100
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문과 일치하며 요청 선수와 무관함을 정확히 전달"
+    }
+  },
+  {
+    "player_name": "이형범",
+    "category": "정상",
+    "summary": "2026년 7월 23일, 한화는 KIA와 1대 1 트레이드를 통해 불펜 투수 이형범(32세)을 영입했습니다. 그러나 이형범은 한화에서 3경기(총 1.2이닝)만에 6실점을 기록해 ERA 21.60이라는 부진을 보였고, 곧 2군으로 강등되었습니다. 트레이드 전 KIA에서는 19경기 24이닝에 평균자책점 3.00을 유지했지만, 7월 이후 9경기에서는 평균자책점 7.36으로 고전한 바 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2159,
+      "completion_tokens": 223
+    },
+    "judge": {
+      "faithfulness": 2,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 포함된 ERA 21.60 수치는 원문에 없으며 사실과 다릅니다."
+    }
+  },
+  {
+    "player_name": "카라스코",
+    "category": "외국인클린",
+    "summary": "LG 트윈스가 새로 영입한 외국인 선발 투수 카를로스 카라스코는 8월 10일(현지시간) KBO 데뷔전에서 7이닝을 완투하며 퍼펙트 피칭을 기록했다. 그의 등판 이후 팀 분위기가 크게 달라졌다는 평가가 이어졌지만, 카라스코가 경기에서 물러난 직후 상대팀이 득점해 무승부로 마무리되었다. 메이저리그 통산 112승을 가진 베테랑 투수라는 기대감에 힘입어, LG는 카라스코를 1선발로 내세워 하위권 팀들과의 연속 경기에서 반등을 노리고 있다. 현재 팀은 폭염으로 중단됐던 일정이 재개된 뒤 카라스코의 활약을 중심으로 연속 6연전에서 승점을 끌어올리려는 상황이다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": true,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2262,
+      "completion_tokens": 339
+    },
+    "judge": {
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "날짜 언급이 원문에 없음"
+    }
+  },
+  {
+    "player_name": "타케다",
+    "category": "외국인클린",
+    "summary": "타케다 쇼타는 SSG 랜더스에서 활약하는 투수로, 전반기 15경기에서 1승 7패, 평균자책점 7.43이라는 부진을 보였습니다. 하지만 후반기에 들어 5이닝 이상을 소화한 3경기를 연속으로 던지며 평균자책점을 4.60으로 낮추는 회복세를 보이고 있습니다. 최근 10경기 중 한 경기를 제외하고는 모두 3실점 이하를 기록해 안정적인 모습을 보여주고 있습니다. 이러한 변화로 인해 팀은 그의 교체 여부를 두고 신중히 검토하고 있습니다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2271,
+      "completion_tokens": 230
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 기사 내용과 일치하고 인물도 정확히 다룸"
+    }
+  },
+  {
+    "player_name": "하영민",
+    "category": "부분오염_관련성낮음",
+    "summary": "키움 히어로즈의 선발 투수 하영민은 6일 좌측 대퇴직근건염 진단을 받았지만 큰 부상은 아니라고 밝혔다. 하지만 앞선 5일 고관절 부상으로 1군 엔트리에서 말소돼 폭염 브레이크 기간에도 1군 경기 출전이 중단된 상태다. 구단 관계자는 회복에 큰 지장이 없으니 다음 3연전 일정에 복귀할 가능성이 있다고 전했다. 최근 그는 2이닝에서 볼넷을 많이 허용해 아쉬움을 남기기도 했다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2260,
+      "completion_tokens": 221
+    },
+    "judge": {
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약은 대부분 기사 내용과 일치하지만, 복귀 일정에 대한 언급은 원문에 없어 약간 허위가 포함되었습니다."
+    }
+  },
+  {
+    "player_name": "한두솔",
+    "category": "정상",
+    "summary": "한두솔은 SSG 랜더스의 왼손 불펜 투수이다. 7월 말에 고명준·김성욱과 함께 1군 명단에서 제외돼 2군으로 내려갔다. 하지만 8월 1일과 2일 경기에서 각각 1이닝을 무실점으로 마무리하며 팀 승리에 기여했다. 8월 1일 경기 후에는 동료 이지영에게 장난으로 “꿀밤”을 맞는 장면도 포착되었다.",
+    "rule": {
+      "hanja_found": false,
+      "foreign_league_mentioned": false,
+      "own_team_mentioned": true
+    },
+    "tokens": {
+      "prompt_tokens": 2275,
+      "completion_tokens": 187
+    },
+    "judge": {
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용만 반영하고 선수에 집중함"
+    }
+  }
+]

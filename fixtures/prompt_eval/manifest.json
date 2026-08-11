@@ -1,0 +1,97 @@
+[
+  {
+    "player_name": "이용준",
+    "category": "완전동명이인",
+    "file": "이용준.json"
+  },
+  {
+    "player_name": "김한결",
+    "category": "완전동명이인",
+    "file": "김한결.json"
+  },
+  {
+    "player_name": "박정훈",
+    "category": "완전동명이인",
+    "file": "박정훈.json"
+  },
+  {
+    "player_name": "이진하",
+    "category": "완전동명이인",
+    "file": "이진하.json"
+  },
+  {
+    "player_name": "이로운",
+    "category": "완전동명이인",
+    "file": "이로운.json"
+  },
+  {
+    "player_name": "알칸타라",
+    "category": "리그혼입",
+    "file": "알칸타라.json"
+  },
+  {
+    "player_name": "카라스코",
+    "category": "외국인클린",
+    "file": "카라스코.json"
+  },
+  {
+    "player_name": "타케다",
+    "category": "외국인클린",
+    "file": "타케다.json"
+  },
+  {
+    "player_name": "도태훈",
+    "category": "정상",
+    "file": "도태훈.json"
+  },
+  {
+    "player_name": "김한중",
+    "category": "정상",
+    "file": "김한중.json"
+  },
+  {
+    "player_name": "한두솔",
+    "category": "정상",
+    "file": "한두솔.json"
+  },
+  {
+    "player_name": "오선우",
+    "category": "정상",
+    "file": "오선우.json"
+  },
+  {
+    "player_name": "김한홀",
+    "category": "정상",
+    "file": "김한홀.json"
+  },
+  {
+    "player_name": "양우진",
+    "category": "정상",
+    "file": "양우진.json"
+  },
+  {
+    "player_name": "이형범",
+    "category": "정상",
+    "file": "이형범.json"
+  },
+  {
+    "player_name": "백승현",
+    "category": "부분오염_무관기사",
+    "file": "백승현.json"
+  },
+  {
+    "player_name": "박세혁",
+    "category": "부분오염_무관기사",
+    "file": "박세혁.json"
+  },
+  {
+    "player_name": "김헌곤",
+    "category": "부분오염_관련성낮음",
+    "file": "김헌곤.json"
+  },
+  {
+    "player_name": "하영민",
+    "category": "부분오염_관련성낮음",
+    "file": "하영민.json"
+  }
+]
