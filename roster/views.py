@@ -12,7 +12,7 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -693,10 +693,22 @@ def stats(request):
         }
         for row in reversed(daily)
     ]
+
+    push_total = PushSubscription.objects.count()
+    push_by_team = list(
+        PushSubscription.objects.values("team__name").annotate(count=Count("id")).order_by("-count")
+    )
+
     return render(
         request,
         "roster/stats.html",
-        {"daily": daily, "totals": totals, "chart_data": chart_data},
+        {
+            "daily": daily,
+            "totals": totals,
+            "chart_data": chart_data,
+            "push_total": push_total,
+            "push_by_team": push_by_team,
+        },
     )
 
 

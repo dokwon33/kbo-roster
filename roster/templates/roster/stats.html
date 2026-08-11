@@ -61,7 +61,24 @@
       <div class="label">누적 LLM 호출</div>
       <div class="value">{{ totals.llm_calls|default:0 }}</div>
     </div>
+    <div class="card">
+      <div class="label">푸시 구독자</div>
+      <div class="value">{{ push_total|default:0 }}</div>
+    </div>
   </div>
+
+  <table class="stats-table" style="margin-bottom: 20px;">
+    <thead>
+      <tr><th>팀</th><th>구독자 수</th></tr>
+    </thead>
+    <tbody>
+      {% for row in push_by_team %}
+        <tr><td>{{ row.team__name|default:"(팀 없음)" }}</td><td>{{ row.count }}</td></tr>
+      {% empty %}
+        <tr><td colspan="2">구독자 없음</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <div class="stats-chart-card">
     <h3>최근 30일 추이</h3>
