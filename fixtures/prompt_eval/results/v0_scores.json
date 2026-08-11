@@ -16,7 +16,7 @@
       "faithfulness": 5,
       "identity_correct": true,
       "relevance": 5,
-      "notes": "요약이 원문 내용에 정확히 부합하고, 선수와 무관한 기사임을 올바르게 판단함"
+      "notes": "요약이 정확히 관련 기사 부재를 언급함"
     }
   },
   {
@@ -33,7 +33,10 @@
       "completion_tokens": 162
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 정확히 일치하고, 올바른 인물에 초점을 맞춤"
     }
   },
   {
@@ -50,7 +53,10 @@
       "completion_tokens": 189
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하고 김한홀에만 집중했습니다."
     }
   },
   {
@@ -67,7 +73,10 @@
       "completion_tokens": 223
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 3,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 김헌곤의 2군 가능성 언급이 원문에 없어 약간 허위가 포함되었습니다."
     }
   },
   {
@@ -84,7 +93,10 @@
       "completion_tokens": 160
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 정확히 일치함"
     }
   },
   {
@@ -101,7 +113,10 @@
       "completion_tokens": 178
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하고 박세혁에 집중함"
     }
   },
   {
@@ -121,7 +136,7 @@
       "faithfulness": 5,
       "identity_correct": false,
       "relevance": 1,
-      "notes": "요약은 골프 코치 박정훈에 관한 내용으로, 요청한 키움 야구 선수와 무관합니다."
+      "notes": "요약이 요청한 키움 야구 선수와 무관한 골프 코치 내용"
     }
   },
   {
@@ -138,7 +153,10 @@
       "completion_tokens": 180
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약은 핵심 사실을 담았지만 '마무리 역할'은 원문에 없어서 약간 과장됨"
     }
   },
   {
@@ -155,7 +173,10 @@
       "completion_tokens": 347
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": false,
+      "relevance": 2,
+      "notes": "요약에 키움 라울 알칸타라와 마이애미 샌디 알칸타라를 혼합해 요청 선수와 무관한 내용이 포함돼 있음"
     }
   },
   {
@@ -172,7 +193,10 @@
       "completion_tokens": 226
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용과 일치하며, 대상 선수를 정확히 다루고 있음"
     }
   },
   {
@@ -189,7 +213,10 @@
       "completion_tokens": 276
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 3,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 부상 복귀 언급은 원문에 없으며 약간의 허구가 포함됨"
     }
   },
   {
@@ -206,7 +233,10 @@
       "completion_tokens": 77
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 적절히 거절했음"
     }
   },
   {
@@ -226,7 +256,7 @@
       "faithfulness": 5,
       "identity_correct": true,
       "relevance": 5,
-      "notes": "요약이 원문과 일치하며 선수와 무관함을 정확히 지적함"
+      "notes": "요약이 원문과 정확히 일치하며, 선수와 무관한 인물임을 명확히 밝혔습니다."
     }
   },
   {
@@ -243,7 +273,10 @@
       "completion_tokens": 100
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문과 일치하며 요청 선수와 무관함을 정확히 전달"
     }
   },
   {
@@ -260,7 +293,10 @@
       "completion_tokens": 223
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 2,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약에 포함된 ERA 21.60 수치는 원문에 없으며 사실과 다릅니다."
     }
   },
   {
@@ -277,7 +313,10 @@
       "completion_tokens": 339
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "날짜 언급이 원문에 없음"
     }
   },
   {
@@ -294,7 +333,10 @@
       "completion_tokens": 230
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 기사 내용과 일치하고 인물도 정확히 다룸"
     }
   },
   {
@@ -311,7 +353,10 @@
       "completion_tokens": 221
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 4,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약은 대부분 기사 내용과 일치하지만, 복귀 일정에 대한 언급은 원문에 없어 약간 허위가 포함되었습니다."
     }
   },
   {
@@ -328,7 +373,10 @@
       "completion_tokens": 187
     },
     "judge": {
-      "error": "429 재시도 초과"
+      "faithfulness": 5,
+      "identity_correct": true,
+      "relevance": 5,
+      "notes": "요약이 원문 내용만 반영하고 선수에 집중함"
     }
   }
 ]
