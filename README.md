@@ -32,8 +32,10 @@ kbo-roster/
 │   ├── views.py / urls.py    # 대시보드 뷰
 │   ├── templates/roster/     # 팀별 현황, 리그 순위, 매진율 통계, 선수 상세/뉴스, 최근 변동 페이지
 │   ├── templatetags/         # 상태 뱃지 · 구단 로고 · 연속 승패 표시용 템플릿 필터
+│   ├── mcp_server.py          # KBO 로스터 데이터를 노출하는 읽기 전용 MCP 서버(FastMCP)
 │   └── management/commands/
-│       └── sync_roster.py    # 스크래핑 결과를 DB에 반영하는 커맨드
+│       ├── sync_roster.py    # 스크래핑 결과를 DB에 반영하는 커맨드
+│       └── mcp_server.py     # 위 MCP 서버를 stdio로 실행하는 커맨드
 ├── scripts/sync_roster.sh    # 크론에서 호출하는 실행 스크립트
 ├── logs/sync_roster.log      # 동기화 실행 로그
 └── requirements.txt
@@ -170,6 +172,52 @@ KBO 공식 사이트를 매 요청마다 긁으면 응답이 느려지고 상대
 지연(lazy) 캐시다 — 캐시가 비어 있거나 유지시간이 지난 상태에서 방문자가 들어오면 그
 요청 처리 중에 한 번 새로 긁어와 캐시를 채우고, 그 전까지는 캐시된 값을 그대로 재사용한다.
 따라서 트래픽이 없는 시간에는 KBO 사이트에 아무 요청도 나가지 않는다.
+
+## MCP 서버
+
+Django ORM/스크래핑 계층을 그대로 재사용해, KBO 로스터 데이터를 Claude 같은 MCP
+클라이언트가 자연어로 조회할 수 있도록 읽기 전용 MCP 서버를 얹었다 (`roster/mcp_server.py`,
+공식 MCP 파이썬 SDK의 `FastMCP`로 구현). 데이터를 변경하는 도구는 없다 — 전부 조회만 한다.
+
+**노출 도구:**
+
+| 도구 | 설명 |
+|---|---|
+| `list_teams` | 등록된 구단 이름 목록 |
+| `get_team_roster(team_name)` | 해당 구단의 1군 등록 / 2군·부상 등 기타 상태 선수 명단 |
+| `get_player_status(player_name)` | 선수 현재 상태 + 등록/말소 등 전체 이력 |
+| `get_standings()` | 1군 전체 순위 + 2군 퓨처스 북부/남부 순위 |
+| `get_recent_roster_events(days, team_name)` | 최근 로스터 변동(등록/말소 등) 이력 |
+| `get_attendance_stats()` | 구단별 평균 좌석 매진율 |
+
+`get_standings`/`get_attendance_stats`는 뷰와 동일한 캐시 키(`roster/views.py`의
+`_cached_fetch`)를 사용하므로, 웹 화면에서 이미 캐시가 채워져 있으면 KBO 사이트를 다시
+긁지 않고 재사용한다.
+
+**로컬 실행:**
+
+```bash
+python manage.py mcp_server
+```
+
+stdio로 대기하므로 그 자체로는 아무것도 출력하지 않는다 — MCP 클라이언트가 이 프로세스를
+직접 띄워 붙는 방식이다. Claude Desktop에서 쓰려면 `claude_desktop_config.json`에 아래처럼
+등록한다 (경로는 실제 클론 위치에 맞게 수정):
+
+```json
+{
+  "mcpServers": {
+    "kbo-roster": {
+      "command": "/Users/you/kbo-roster/venv/bin/python",
+      "args": ["/Users/you/kbo-roster/manage.py", "mcp_server"]
+    }
+  }
+}
+```
+
+**사용 예시 (Claude Desktop):**
+
+![KBO 로스터 MCP 서버를 Claude Desktop에서 사용하는 모습](docs/images/mcp-demo.png)
 
 ## 대시보드 (웹 화면)
 
