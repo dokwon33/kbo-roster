@@ -117,10 +117,10 @@ def get_standings() -> dict:
 
 @mcp.tool()
 @sync_to_async
-def get_recent_roster_events(days: int = 30, team_name: str | None = None) -> list[dict]:
+def get_recent_roster_events(days: int = 30, team_name: str = "") -> dict:
     """최근 며칠(days) 이내의 등록/말소 등 로스터 변동 이력을 최신순으로 반환한다.
 
-    team_name을 지정하면 해당 구단 관련 이벤트만 반환한다.
+    team_name을 지정하면 해당 구단 관련 이벤트만 반환한다(빈 문자열이면 전체 구단).
     """
     days = min(days, ROSTER_STALE_DAYS * 3)
     cutoff = timezone.localdate() - timedelta(days=days)
@@ -129,19 +129,21 @@ def get_recent_roster_events(days: int = 30, team_name: str | None = None) -> li
     if team_name:
         team = _find_team(team_name)
         if team is None:
-            return [{"error": f"'{team_name}' 이름과 일치하는 구단을 찾을 수 없습니다."}]
+            return {"error": f"'{team_name}' 이름과 일치하는 구단을 찾을 수 없습니다."}
         events = events.filter(team=team)
 
-    return [
-        {
-            "date": e.event_date.isoformat(),
-            "player": e.player.name,
-            "team": e.team.name if e.team else None,
-            "event_type": e.get_event_type_display(),
-            "reason": e.reason,
-        }
-        for e in events[:100]
-    ]
+    return {
+        "events": [
+            {
+                "date": e.event_date.isoformat(),
+                "player": e.player.name,
+                "team": e.team.name if e.team else None,
+                "event_type": e.get_event_type_display(),
+                "reason": e.reason,
+            }
+            for e in events[:100]
+        ]
+    }
 
 
 @mcp.tool()
