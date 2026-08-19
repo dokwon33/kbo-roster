@@ -184,7 +184,7 @@
     </div>
   </dialog>
 
-  <dialog id="whatsNewDialog" data-version="2026-08-06">
+  <dialog id="whatsNewDialog">
     <div class="dialog-body">
       <h3>🎉 업데이트 소식 (8/6)</h3>
       <ul class="whatsnew-list">
@@ -230,27 +230,6 @@
     </a>
   </footer>
   <div class="font-credit">이 사이트는 KBO 공식 서체 'KBO Dia Gothic'을 사용하고 있습니다.</div>
-
-  <script>
-    // 오늘 하루 껐으면 오늘 안에는 다시 안 뜨고, 날짜가 바뀌거나 업데이트 내용(data-version)이
-    // 바뀌면 다시 한 번 보여준다. UTC 기준으로 날짜를 계산하면 KST에서는 자정이 아니라
-    // 오전 9시에 날짜가 바뀌어버리므로, 로컬 시간 기준으로 직접 날짜를 구한다.
-    (function () {
-      var dialog = document.getElementById("whatsNewDialog");
-      var version = dialog.dataset.version;
-      var storageKey = "whatsnew_dismissed";
-      var now = new Date();
-      var today = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate();
-      var dismissKey = version + ":" + today;
-
-      if (localStorage.getItem(storageKey) !== dismissKey) {
-        dialog.showModal();
-      }
-      dialog.addEventListener("close", function () {
-        localStorage.setItem(storageKey, dismissKey);
-      });
-    })();
-  </script>
 
   <script>
     if ("serviceWorker" in navigator) {
