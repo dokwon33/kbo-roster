@@ -288,6 +288,14 @@ GAME_LIST_URL = "https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList"
 GAME_CENTER_REFERER = "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
 GAME_SERIES_IDS = "0,1,3,4,5,6,7,9"  # 1군 정규시즌 + 시범경기 등 전체 시리즈
 
+# GameCenter는 srId로 시리즈를 구분한다. 2025 시즌 일정으로 확인한 매핑:
+# 0=정규시즌, 4=와일드카드 결정전, 3=준플레이오프, 5=플레이오프, 7=한국시리즈.
+REGULAR_SEASON_SERIES_ID = "0"
+
+# leId는 리그 구분. 1=1군, 2=2군(퓨처스).
+LEAGUE_1GUN = "1"
+LEAGUE_FUTURES = "2"
+
 GAME_STATE_ENDED = "3"
 GAME_STATE_CANCELLED = "4"
 
@@ -318,10 +326,12 @@ class GameResult:
         return self.state == GAME_STATE_ENDED
 
 
-def _game_center_post(url: str, date_str: str) -> dict:
+def _game_center_post(
+    url: str, date_str: str, series_ids: str = GAME_SERIES_IDS, league_id: str = LEAGUE_1GUN
+) -> dict:
     resp = requests.post(
         url,
-        data={"leId": "1", "srId": GAME_SERIES_IDS, "date": date_str},
+        data={"leId": league_id, "srId": series_ids, "date": date_str},
         headers={
             **HEADERS,
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -341,6 +351,28 @@ def fetch_previous_game_date(target: date) -> date | None:
     if not before:
         return None
     return datetime.strptime(before, "%Y%m%d").date()
+
+
+def fetch_regular_season_end_date(year: int, league_id: str = LEAGUE_1GUN) -> date | None:
+    """해당 연도 정규시즌 마지막 경기일. 포스트시즌 경기를 잘라내거나 순위 확정을 판단할 때 쓴다.
+
+    연말 날짜로 물으면 그 시점 기준의 직전/당일 경기일을 돌려주는데, 시즌이 완전히 끝난
+    뒤에는 NOW_G_DT가 다음 시즌 개막일로 넘어가버린다. 그래서 두 값 중 해당 연도에
+    속하는 것만 골라 그중 가장 늦은 날짜를 쓴다. 일정이 아직 안 잡혔으면 None.
+    """
+    data = _game_center_post(
+        GAME_DATE_URL, f"{year}1231",
+        series_ids=REGULAR_SEASON_SERIES_ID, league_id=league_id,
+    )
+    dates = []
+    for key in ("NOW_G_DT", "BEFORE_G_DT"):
+        raw = data.get(key)
+        if not raw:
+            continue
+        parsed = datetime.strptime(raw, "%Y%m%d").date()
+        if parsed.year == year:
+            dates.append(parsed)
+    return max(dates) if dates else None
 
 
 def fetch_games_for_date(target: date) -> list:

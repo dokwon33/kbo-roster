@@ -1,0 +1,5 @@
+{% if roster_is_frozen %}
+  <p class="roster-as-of-note">
+    {{ roster_as_of|date:"Y년 n월 j일" }} 이후 등록/말소 변동이 없어, 그 시점 기준 명단을 그대로 보여주고 있습니다.
+  </p>
+{% endif %}

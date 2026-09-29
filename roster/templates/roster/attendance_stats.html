@@ -41,7 +41,9 @@
 {% block content %}
   <h1 style="font-size:20px; color:#14213d; margin-bottom:4px;">🎟️ 구장별 좌석 매진율 통계</h1>
   <p style="font-size:13px; color:#64748b; margin-bottom:20px;">
-    이번 시즌 홈 경기 관중수 ÷ 구장 좌석 수 기준. 삼성 포항 경기는 통계에서 제외됩니다.
+    이번 시즌 <strong>정규시즌</strong> 홈 경기 관중수 ÷ 구장 좌석 수 기준.
+    포스트시즌{% if season_end %}({{ season_end|date:"n월 j일" }} 이후){% endif %}과
+    삼성 포항 경기는 통계에서 제외됩니다.
   </p>
 
   {% if team_stats %}

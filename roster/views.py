@@ -12,7 +12,7 @@ from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Max, Sum
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -88,13 +88,34 @@ ROSTER_STALE_DAYS = 30
 MAIN_PAGE_STALE_DAYS = 14  # 메인 페이지("구단별 1군/2군 변동")는 더 최근 변동만 보여주도록 팀 상세보다 짧게 잡음
 
 
-def _drop_stale(players, days=ROSTER_STALE_DAYS):
-    """마지막 변동으로부터 days일이 지난 선수는 명단에서 제외한다.
+def _roster_reference_date():
+    """'최근'을 판단하는 기준일 — 오늘이 아니라 DB에 쌓인 마지막 로스터 변동일.
+
+    정규시즌이 끝나면 1군 등록/말소가 멈추는데, 오늘을 기준으로 자르면 비시즌 동안
+    모든 선수가 순서대로 컷오프를 넘겨 명단이 통째로 비어버린다. 마지막 변동일을
+    기준으로 삼으면 시즌 종료 시점 명단이 그대로 남고, 다음 시즌 첫 변동이 들어오는
+    순간 기준일이 다시 따라 올라가 원래 동작으로 자동 복귀한다.
+    """
+    latest = RosterEvent.objects.aggregate(latest=Max("event_date"))["latest"]
+    return latest or timezone.now().date()
+
+
+def _is_roster_frozen(reference):
+    """기준일이 오늘에서 한참 떨어져 있으면(비시즌 등) 화면에 '~기준' 안내를 띄우기 위한 판정.
+
+    비시즌뿐 아니라 스크래퍼가 조용히 멈춘 경우도 여기에 걸리므로, 안내 문구는
+    원인을 단정하지 말고 마지막 변동일만 알려준다.
+    """
+    return timezone.now().date() - reference > timedelta(days=RECENT_EVENT_DAYS)
+
+
+def _drop_stale(players, reference, days=ROSTER_STALE_DAYS):
+    """기준일(reference)로부터 days일 이전이 마지막 변동인 선수는 명단에서 제외한다.
 
     로스터 명단은 '최근 변동 사항'을 보여주는 목적이라, 오래 방치된 선수가
     실제 소속과 무관하게 계속 노출되는 것을 막는다.
     """
-    cutoff = timezone.now().date() - timedelta(days=days)
+    cutoff = reference - timedelta(days=days)
     return [p for p in players if p.current_status and p.current_status.event_date >= cutoff]
 
 
@@ -241,11 +262,14 @@ def _build_callup_headlines():
 def team_list(request):
     teams = Team.objects.prefetch_related("players").all()
     active_type = RosterEvent.ACTIVE_1GUN
+    reference = _roster_reference_date()
 
     cards = []
     team_ids_by_name = {}
     for team in teams:
-        players = _drop_stale(_attach_current_status(team.players.all()), days=MAIN_PAGE_STALE_DAYS)
+        players = _drop_stale(
+            _attach_current_status(team.players.all()), reference, days=MAIN_PAGE_STALE_DAYS
+        )
         active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
         others = [p for p in players if p not in active_players]
         recent_cutoff = timezone.now().date() - timedelta(days=RECENT_EVENT_DAYS)
@@ -268,6 +292,8 @@ def team_list(request):
         "roster/team_list.html",
         {
             "cards": cards,
+            "roster_as_of": reference,
+            "roster_is_frozen": _is_roster_frozen(reference),
             "latest_game_date": latest_game_date,
             "latest_games": latest_games,
             "hitter_headline": hitter_headline,
@@ -280,7 +306,8 @@ def team_list(request):
 @ensure_csrf_cookie
 def team_detail(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
-    players = _drop_stale(_attach_current_status(team.players.all()))
+    reference = _roster_reference_date()
+    players = _drop_stale(_attach_current_status(team.players.all()), reference)
     active_type = RosterEvent.ACTIVE_1GUN
     active_players = [p for p in players if p.current_status and p.current_status.event_type == active_type]
     others = [p for p in players if p not in active_players]
@@ -291,6 +318,8 @@ def team_detail(request, team_id):
             "team": team,
             "active_players": active_players,
             "other_players": others,
+            "roster_as_of": reference,
+            "roster_is_frozen": _is_roster_frozen(reference),
             "vapid_public_key": settings.VAPID_PUBLIC_KEY,
         },
     )
@@ -339,9 +368,33 @@ def player_detail(request, player_id):
 
 
 def recent_events(request):
-    cutoff = timezone.now().date() - timedelta(days=ROSTER_STALE_DAYS)
+    reference = _roster_reference_date()
+    cutoff = reference - timedelta(days=ROSTER_STALE_DAYS)
     events = RosterEvent.objects.select_related("player", "team").filter(event_date__gte=cutoff)[:100]
-    return render(request, "roster/recent_events.html", {"events": events})
+    return render(
+        request,
+        "roster/recent_events.html",
+        {
+            "events": events,
+            "roster_as_of": reference,
+            "roster_is_frozen": _is_roster_frozen(reference),
+        },
+    )
+
+
+def _regular_season_end(today, league_id=None):
+    """해당 리그의 정규시즌 종료일과, 그 시즌이 이미 끝났는지 여부.
+
+    마지막 경기 '당일'은 아직 그날 결과로 순위가 바뀔 수 있어 확정으로 보지 않는다.
+    종료일을 못 받아오면(일정 미확정·조회 실패) 확정이 아닌 것으로 둔다.
+    """
+    league_id = league_id or scraping.LEAGUE_1GUN
+    end = _cached_fetch(
+        f"season_end_{league_id}_{today}",
+        lambda: scraping.fetch_regular_season_end_date(today.year, league_id=league_id),
+        default=None,
+    ) or None  # 조회 실패 시 _cached_fetch가 빈 리스트를 주므로 "모름"으로 통일한다.
+    return end, bool(end and today > end)
 
 
 def standings(request):
@@ -356,6 +409,11 @@ def standings(request):
         "남부": [r for r in rows_2gun if r.division == "남부"],
     }
 
+    # 정규시즌이 닫힌 뒤에도 순위표는 계속 '현재 순위'처럼 보인다. 퓨처스가 1군보다 먼저
+    # 끝나고, 1군도 포스트시즌 동안 같은 상태가 되므로 양쪽 모두 확정 여부를 표시한다.
+    regular_end, regular_is_final = _regular_season_end(today)
+    futures_end, futures_is_final = _regular_season_end(today, scraping.LEAGUE_FUTURES)
+
     team_ids_by_name = dict(Team.objects.values_list("name", "id"))
 
     return render(
@@ -364,6 +422,10 @@ def standings(request):
         {
             "standings_1gun": standings_1gun,
             "standings_2gun": standings_2gun,
+            "regular_end": regular_end,
+            "regular_is_final": regular_is_final,
+            "futures_end": futures_end,
+            "futures_is_final": futures_is_final,
             "team_ids_by_name": team_ids_by_name,
         },
     )
@@ -371,6 +433,15 @@ def standings(request):
 
 def attendance_stats(request):
     rows = _cached_fetch("attendance_rows", scraping.fetch_attendance_rows)
+
+    # 포스트시즌은 거의 전 경기가 매진이라 같이 넣으면 정규시즌 평균이 위로 끌려간다.
+    # 관중 표에는 시리즈 구분이 없어서, 정규시즌 마지막 경기일을 따로 받아와 그 이후를 자른다.
+    # 종료일을 못 받아오면(일정 미확정·조회 실패) 자르지 않고 전체를 쓴다 — 통계가 통째로
+    # 비는 것보다는 낫다.
+    today = date.today()
+    season_end, _ = _regular_season_end(today)
+    if season_end:
+        rows = [r for r in rows if r.game_date <= season_end]
 
     home_rows = [r for r in rows if r.capacity]
 
@@ -410,7 +481,11 @@ def attendance_stats(request):
 
     team_stats.sort(key=lambda x: -x["avg_rate"])
 
-    return render(request, "roster/attendance_stats.html", {"team_stats": team_stats})
+    return render(
+        request,
+        "roster/attendance_stats.html",
+        {"team_stats": team_stats, "season_end": season_end},
+    )
 
 
 def player_news(request, player_id):

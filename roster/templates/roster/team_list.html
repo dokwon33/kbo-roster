@@ -143,6 +143,7 @@
   {% endif %}
 
   <h2>구단별 1군/2군 변동</h2>
+  {% include "roster/_roster_as_of_note.html" %}
   <div class="team-nav-grid">
     {% for card in cards %}
       <a class="team-nav-card{% if card.has_recent %} has-recent{% endif %}" href="{% url 'roster:team_detail' card.team.id %}">

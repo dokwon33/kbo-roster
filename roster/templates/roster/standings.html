@@ -13,6 +13,12 @@
     font-size: 12px; font-weight: normal; color: #64748b;
     background: #eef1f6; border-radius: 999px; padding: 2px 10px;
   }
+  .standings-section h2 .final-tag {
+    font-size: 12px; font-weight: normal; color: #9a3412;
+    background: #fff7ed; border: 1px solid #fed7aa;
+    border-radius: 999px; padding: 2px 10px;
+  }
+  .season-final-note { font-size: 12px; color: #64748b; margin: -4px 0 10px; }
   .standings-card {
     background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
     overflow-x: auto;
@@ -64,7 +70,13 @@
 
 {% block content %}
   <div class="standings-section">
-    <h2>🥇 1군 리그 순위</h2>
+    <h2>
+      🥇 1군 리그 순위
+      {% if regular_is_final %}<span class="final-tag">정규시즌 최종</span>{% endif %}
+    </h2>
+    {% if regular_is_final %}
+      <p class="season-final-note">{{ regular_end|date:"n월 j일" }} 정규시즌 종료 기준입니다. 이후 순위는 포스트시즌 결과로 가려집니다.</p>
+    {% endif %}
     <div class="standings-card">
       <table class="standings-table">
         <tr>
@@ -109,7 +121,13 @@
 
   {% for division, rows in standings_2gun.items %}
     <div class="standings-section">
-      <h2>⚾ 2군 퓨처스리그 <span class="division-tag">{{ division }}</span></h2>
+      <h2>
+        ⚾ 2군 퓨처스리그 <span class="division-tag">{{ division }}</span>
+        {% if futures_is_final %}<span class="final-tag">정규시즌 최종</span>{% endif %}
+      </h2>
+      {% if futures_is_final %}
+        <p class="season-final-note">{{ futures_end|date:"n월 j일" }} 퓨처스리그 정규시즌 종료 기준입니다.</p>
+      {% endif %}
       <div class="standings-card">
         <table class="standings-table">
           <tr>

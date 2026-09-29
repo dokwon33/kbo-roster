@@ -80,6 +80,8 @@
   </div>
   {% if vapid_public_key %}<p class="push-note" id="push-note"></p>{% endif %}
 
+  {% include "roster/_roster_as_of_note.html" %}
+
   <div class="roster-section">
     <h3>1군 등록 <span class="count-tag">{{ active_players|length }}명</span></h3>
     <div class="roster-card">
