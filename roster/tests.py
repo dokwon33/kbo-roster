@@ -6,10 +6,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+import requests
+
 from roster import scraping
 from roster.models import Player, RosterEvent, Team
 from roster.scraping import AttendanceRow
-from roster.views import MAIN_PAGE_STALE_DAYS, ROSTER_STALE_DAYS
+from roster.views import MAIN_PAGE_STALE_DAYS, ROSTER_STALE_DAYS, _build_callup_headlines
 
 # 운영 설정은 whitenoise 매니페스트 스토리지라 collectstatic을 먼저 돌려야 {% static %}이 풀린다.
 # 테스트에서까지 그걸 요구하지 않도록 기본 스토리지로 바꾼다.
@@ -285,3 +287,92 @@ class PostseasonBracketTests(TestCase):
 
         self.assertEqual(resp.context["bracket_teams"], [])
         self.assertNotContains(resp, "포스트시즌 대진표")
+
+
+class CallupHeadlineTests(TestCase):
+    """홈 화면 콜업 헤드라인 — 후보별 성적 요청을 병렬로 보내도 선정 결과는 순차 처리와 같아야 한다."""
+
+    def setUp(self):
+        cache.clear()
+        self.team = Team.objects.create(name="KT")
+        today = timezone.now().date()
+        self.pitcher_a = self._callup("투수A", "투", "P1", today)
+        self.pitcher_b = self._callup("투수B", "투", "P2", today - timedelta(days=1))
+        self.hitter_a = self._callup("타자A", "내", "H1", today - timedelta(days=2))
+        self.hitter_b = self._callup("타자B", "외", "H2", today - timedelta(days=3))
+        self.pitcher_stats = {
+            "P1": {"이닝": "10 1/3", "평균자책점": "3.50"},
+            "P2": {"이닝": "12", "평균자책점": "2.10"},
+        }
+        self.hitter_stats = {
+            "H1": {"타수": "40", "출루율": "0.350", "장타율": "0.450"},
+            "H2": {"타수": "50", "출루율": "0.400", "장타율": "0.500"},
+        }
+
+    def _callup(self, name, position, kbo_id, event_date):
+        player = Player.objects.create(name=name, team=self.team, position=position, kbo_player_id=kbo_id)
+        RosterEvent.objects.create(
+            player=player, team=self.team, event_date=event_date, event_type=RosterEvent.ACTIVE_1GUN
+        )
+        return player
+
+    def _patch_stats(self, failing_ids=()):
+        def fake(stats_by_id):
+            def fetch(player_id, league):
+                if player_id in failing_ids:
+                    raise requests.RequestException("boom")
+                return stats_by_id.get(player_id)
+
+            return fetch
+
+        return (
+            patch.object(scraping, "fetch_pitcher_stats", side_effect=fake(self.pitcher_stats)),
+            patch.object(scraping, "fetch_hitter_stats", side_effect=fake(self.hitter_stats)),
+        )
+
+    def test_picks_best_era_and_ops(self):
+        pitcher_patch, hitter_patch = self._patch_stats()
+        with pitcher_patch, hitter_patch:
+            hitter, pitcher = _build_callup_headlines()
+
+        self.assertEqual(pitcher["player"], self.pitcher_b)
+        self.assertEqual(hitter["player"], self.hitter_b)
+        self.assertAlmostEqual(hitter["ops"], 0.9)
+
+    def test_failed_request_skips_only_that_player(self):
+        pitcher_patch, hitter_patch = self._patch_stats(failing_ids={"P2", "H2"})
+        with pitcher_patch, hitter_patch:
+            hitter, pitcher = _build_callup_headlines()
+
+        self.assertEqual(pitcher["player"], self.pitcher_a)
+        self.assertEqual(hitter["player"], self.hitter_a)
+
+    def test_tie_keeps_most_recent_callup(self):
+        """동점이면 더 최근에 콜업된(후보 순서가 앞선) 선수가 뽑힌다 — 병렬화 전과 같은 동작."""
+        self.pitcher_stats["P2"] = dict(self.pitcher_stats["P1"])
+        pitcher_patch, hitter_patch = self._patch_stats()
+        with pitcher_patch, hitter_patch:
+            _, pitcher = _build_callup_headlines()
+
+        self.assertEqual(pitcher["player"], self.pitcher_a)
+
+    @override_settings(SYNC_SECRET_TOKEN="secret")
+    def test_sync_prewarms_headline_cache(self):
+        pitcher_patch, hitter_patch = self._patch_stats()
+        with pitcher_patch, hitter_patch, patch("roster.views.call_command"):
+            resp = self.client.get(reverse("roster:trigger_sync"), {"token": "secret"})
+
+        self.assertEqual(resp.status_code, 200)
+        hitter, pitcher = cache.get("callup_headlines")
+        self.assertEqual(pitcher["player"], self.pitcher_b)
+        self.assertEqual(hitter["player"], self.hitter_b)
+
+    @override_settings(SYNC_SECRET_TOKEN="secret")
+    def test_sync_succeeds_even_if_headline_refresh_fails(self):
+        with patch("roster.views.call_command"), patch(
+            "roster.views._build_callup_headlines", side_effect=RuntimeError("boom")
+        ), self.assertLogs("roster.views", level="ERROR"):
+            resp = self.client.get(reverse("roster:trigger_sync"), {"token": "secret"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(cache.get("callup_headlines"))
