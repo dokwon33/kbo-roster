@@ -3,6 +3,7 @@ import io
 import json
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, time as dt_time, timedelta
 from pathlib import Path
 
@@ -166,6 +167,11 @@ def _get_news_summary(player):
 CALLUP_CANDIDATE_LIMIT = 20  # 날짜(일수) 컷오프 대신 "가장 최근 콜업 N명" 방식 - 콜업이 뜸한 시기에도 헤드라인이 통째로 비지 않도록 함
 CALLUP_MIN_AB = 10  # 표본이 너무 적으면 극단값(예: 1타수 1안타 OPS 2.000)이 뽑히는 걸 방지
 CALLUP_MIN_IP = 5.0
+# 후보 선수별 2군 성적 페이지를 순차로 긁으면 최대 20명 x 약 0.3초가 걸려, 캐시가 빈 순간의 첫 방문자가
+# 그만큼 기다린다. 동시에 요청하되 KBO 서버에 한꺼번에 몰리지 않도록 동시 요청 수는 제한한다.
+CALLUP_FETCH_WORKERS = 5
+# 매일 /sync/(trigger_sync) 직후 미리 채우므로, 다음 sync 전에 만료되지 않도록 하루보다 약간 길게 잡는다.
+CALLUP_HEADLINES_CACHE_TIMEOUT = 60 * 60 * 25
 
 
 def _parse_float(value):
@@ -228,35 +234,49 @@ def _build_callup_headlines():
     비교 대상이 최근 콜업 선수들뿐이라, 리그 전체 평균 같은 별도 기준 없이도 상대적으로
     비교 가능하다. KBO 공식 2군 성적 페이지 값(출루율+장타율=OPS, 평균자책점)만 그대로 쓴다.
     """
+    players = _recent_callup_players()
+    # 네트워크 요청만 병렬로 보내고, 비교는 원래 후보 순서대로 한다(map은 입력 순서를 유지하므로
+    # 동점일 때 먼저 콜업 순위가 높은 선수가 뽑히는 기존 동작이 그대로 유지된다).
+    with ThreadPoolExecutor(max_workers=CALLUP_FETCH_WORKERS) as executor:
+        all_stats = list(executor.map(_fetch_callup_stats, players))
+
     hitter_best = None
     pitcher_best = None
-    for player in _recent_callup_players():
-        try:
-            if player.position == "투":
-                stats = scraping.fetch_pitcher_stats(player.kbo_player_id, "2군")
-                if not stats:
-                    continue
-                ip = _parse_innings(stats.get("이닝"))
-                era = _parse_float(stats.get("평균자책점"))
-                if ip is None or era is None or ip < CALLUP_MIN_IP:
-                    continue
-                if pitcher_best is None or era < pitcher_best["era"]:
-                    pitcher_best = {"player": player, "era": era, "stats": stats}
-            else:
-                stats = scraping.fetch_hitter_stats(player.kbo_player_id, "2군")
-                if not stats:
-                    continue
-                ab = _parse_float(stats.get("타수"))
-                obp = _parse_float(stats.get("출루율"))
-                slg = _parse_float(stats.get("장타율"))
-                if ab is None or obp is None or slg is None or ab < CALLUP_MIN_AB:
-                    continue
-                ops = obp + slg
-                if hitter_best is None or ops > hitter_best["ops"]:
-                    hitter_best = {"player": player, "ops": ops, "stats": stats}
-        except requests.RequestException:
+    for player, stats in zip(players, all_stats):
+        if not stats:
             continue
+        if player.position == "투":
+            ip = _parse_innings(stats.get("이닝"))
+            era = _parse_float(stats.get("평균자책점"))
+            if ip is None or era is None or ip < CALLUP_MIN_IP:
+                continue
+            if pitcher_best is None or era < pitcher_best["era"]:
+                pitcher_best = {"player": player, "era": era, "stats": stats}
+        else:
+            ab = _parse_float(stats.get("타수"))
+            obp = _parse_float(stats.get("출루율"))
+            slg = _parse_float(stats.get("장타율"))
+            if ab is None or obp is None or slg is None or ab < CALLUP_MIN_AB:
+                continue
+            ops = obp + slg
+            if hitter_best is None or ops > hitter_best["ops"]:
+                hitter_best = {"player": player, "ops": ops, "stats": stats}
     return hitter_best, pitcher_best
+
+
+def _fetch_callup_stats(player):
+    """콜업 후보 1명의 2군 성적을 가져온다. 워커 스레드에서 돌기 때문에 DB 접근 없이 네트워크 요청만 한다."""
+    fetch = scraping.fetch_pitcher_stats if player.position == "투" else scraping.fetch_hitter_stats
+    try:
+        return fetch(player.kbo_player_id, "2군")
+    except requests.RequestException:
+        return None
+
+
+def _refresh_callup_headlines():
+    """콜업 헤드라인을 새로 계산해 캐시에 넣는다. 로스터가 바뀌는 sync 직후에 호출해, 방문자가
+    캐시 만료 시점에 스크래핑을 기다리지 않도록 한다."""
+    cache.set("callup_headlines", _build_callup_headlines(), CALLUP_HEADLINES_CACHE_TIMEOUT)
 
 
 def team_list(request):
@@ -284,7 +304,10 @@ def team_list(request):
         timeout=GAME_RESULTS_CACHE_TIMEOUT,
     )
     hitter_headline, pitcher_headline = _cached_fetch(
-        "callup_headlines", _build_callup_headlines, default=(None, None)
+        "callup_headlines",
+        _build_callup_headlines,
+        default=(None, None),
+        timeout=CALLUP_HEADLINES_CACHE_TIMEOUT,
     )
 
     return render(
@@ -744,6 +767,12 @@ def trigger_sync(request):
 
     buffer = io.StringIO()
     call_command("sync_roster", stdout=buffer, stderr=buffer)
+    # 헤드라인 갱신이 실패해도 동기화 자체는 끝났으므로 sync 결과는 그대로 돌려준다
+    # (캐시가 비어 있으면 다음 방문 때 _cached_fetch가 다시 채운다).
+    try:
+        _refresh_callup_headlines()
+    except Exception:
+        logger.exception("콜업 헤드라인 캐시 갱신 실패")
     return HttpResponse(buffer.getvalue() or "sync_roster 완료", content_type="text/plain")
 
 
