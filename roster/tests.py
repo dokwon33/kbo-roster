@@ -248,6 +248,10 @@ class PostseasonBracketTests(TestCase):
 
     REGULAR_END = date(2026, 10, 7)
     TEAMS = ["KT", "삼성", "LG", "KIA", "두산", "SSG", "NC"]
+    # 업데이트 소식 팝업(모든 페이지에 포함)에도 대진표 소개 문구가 있어서, 페이지 전체 문구 대신
+    # 대진표 영역의 마크업으로 검사한다.
+    PREDICTED_TAG = '<span class="division-tag">현재 순위 기준 예상</span>'
+    FINAL_TAG = '<span class="division-tag">정규시즌 최종 순위 기준</span>'
 
     def setUp(self):
         cache.clear()
@@ -273,20 +277,20 @@ class PostseasonBracketTests(TestCase):
         resp = self._get()
 
         self.assertEqual([r.team for r in resp.context["bracket_teams"]], ["두산", "KIA", "LG", "삼성", "KT"])
-        self.assertContains(resp, "포스트시즌 대진표")
-        self.assertContains(resp, "현재 순위 기준 예상")
+        self.assertContains(resp, 'class="bracket-card"')
+        self.assertContains(resp, self.PREDICTED_TAG)
 
     def test_final_standings_label_after_regular_season(self):
         resp = self._get(today=date(2026, 10, 20))
 
-        self.assertContains(resp, "정규시즌 최종 순위 기준")
-        self.assertNotContains(resp, "현재 순위 기준 예상")
+        self.assertContains(resp, self.FINAL_TAG)
+        self.assertNotContains(resp, self.PREDICTED_TAG)
 
     def test_hidden_when_standings_incomplete(self):
         resp = self._get(team_count=3)
 
         self.assertEqual(resp.context["bracket_teams"], [])
-        self.assertNotContains(resp, "포스트시즌 대진표")
+        self.assertNotContains(resp, 'class="bracket-card"')
 
 
 class CallupHeadlineTests(TestCase):
