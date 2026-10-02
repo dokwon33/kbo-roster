@@ -108,6 +108,64 @@
   .team-nav-name { font-size: 15px; font-weight: 700; color: #14213d; }
   .team-nav-count { font-size: 12px; color: #64748b; }
   .team-nav-card.has-recent .team-nav-count { color: #2563eb; font-weight: 600; }
+  /* 포스트시즌 예상 대진표: 와일드카드 → 한국시리즈로 갈수록 한 단씩 올라가는 계단형 카드.
+     카드 높이가 같아서, 각 카드 오른쪽 가운데에서 다음 카드 왼쪽 가운데까지(STEP만큼 위) 꺾인 선으로 잇는다. */
+  .bracket-section { margin: 28px 0; --step: 26px; --gap: 28px; --line: #cbd5e1; }
+  .bracket-section h2 {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    font-size: 18px; color: #14213d; margin: 0 0 12px;
+  }
+  .bracket-basis {
+    font-size: 12px; font-weight: normal; color: #64748b;
+    background: #eef1f6; border-radius: 999px; padding: 2px 10px;
+  }
+  .bracket-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); align-items: start; }
+  .series-card {
+    position: relative; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 12px 14px; border-top: 3px solid #14213d;
+  }
+  .series-card.series-wc { margin-top: calc(var(--step) * 3); }
+  .series-card.series-spo { margin-top: calc(var(--step) * 2); }
+  .series-card.series-po { margin-top: var(--step); }
+  .series-card.series-ks { border-top-color: #d4a017; background: linear-gradient(180deg, #fffbeb 0%, #fff 55%); }
+  .series-card:not(.series-ks)::after {
+    content: ""; position: absolute; left: 100%; top: calc(50% - var(--step));
+    width: calc(var(--gap) / 2); height: var(--step);
+    border-bottom: 2px solid var(--line); border-right: 2px solid var(--line); border-bottom-right-radius: 8px;
+  }
+  .series-card:not(.series-wc)::before {
+    content: ""; position: absolute; right: 100%; top: 50%;
+    width: calc(var(--gap) / 2); border-top: 2px solid var(--line);
+  }
+  .series-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+  .series-name { font-size: 14px; font-weight: 700; color: #14213d; white-space: nowrap; }
+  .series-ks .series-name { color: #92400e; }
+  .series-format { font-size: 11px; color: #64748b; white-space: nowrap; }
+  .series-team {
+    display: flex; align-items: center; gap: 8px; height: 34px;
+    font-size: 14px; font-weight: 600; color: #1c1e21;
+  }
+  .series-team + .series-team { border-top: 1px solid #f0f1f3; }
+  .series-seed {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 6px; background: #eef1f6;
+    font-size: 11px; font-weight: 700; color: #475569;
+  }
+  .series-ks .series-seed { background: #fef3c7; color: #92400e; }
+  .series-team img { width: 24px; height: 24px; object-fit: contain; }
+  .series-team.is-waiting { color: #94a3b8; font-weight: 500; font-size: 13px; }
+  .series-team.is-waiting .series-seed { background: none; border: 1.5px dashed #cbd5e1; color: #94a3b8; }
+
+  @media (max-width: 860px) {
+    /* 좁은 화면에선 계단 대신 세로로 쌓고, 카드 사이를 아래쪽 연결선으로 잇는다. */
+    .bracket-ladder { grid-template-columns: 1fr; gap: 18px; max-width: 420px; }
+    .series-card.series-wc, .series-card.series-spo, .series-card.series-po { margin-top: 0; }
+    .series-card:not(.series-ks)::after {
+      left: 28px; top: 100%; width: 0; height: 18px;
+      border-bottom: none; border-right: none; border-left: 2px solid var(--line); border-radius: 0;
+    }
+    .series-card:not(.series-wc)::before { display: none; }
+  }
 </style>
 {% endblock %}
 
@@ -223,4 +281,34 @@
       {% endfor %}
     </div>
   </div>
+  {% if bracket %}
+    <div class="bracket-section">
+      <h2>
+        🏆 포스트시즌 {% if not regular_is_final %}예상 {% endif %}대진표
+        <span class="bracket-basis">{% if regular_is_final %}정규시즌 최종 순위 기준{% else %}현재 순위 기준{% endif %}</span>
+      </h2>
+      <div class="bracket-ladder">
+        {% for series in bracket %}
+          <div class="series-card series-{{ series.key }}">
+            <div class="series-head">
+              <span class="series-name">{{ series.name }}</span>
+              <span class="series-format">{{ series.format }}</span>
+            </div>
+            {% for row in series.teams %}
+              <div class="series-team">
+                <span class="series-seed">{{ row.rank }}</span>
+                {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
+                  {% if logo %}<img src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                  {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
+                {% endwith %}
+              </div>
+            {% endfor %}
+            {% if series.waiting_for %}
+              <div class="series-team is-waiting"><span class="series-seed">?</span>{{ series.waiting_for }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}

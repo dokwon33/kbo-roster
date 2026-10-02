@@ -303,6 +303,11 @@ def team_list(request):
         default=(None, []),
         timeout=GAME_RESULTS_CACHE_TIMEOUT,
     )
+    # 순위·정규시즌 종료일은 리그 순위 페이지와 같은 날짜별 캐시 키를 써서 하루 한 번만 긁는다.
+    today = date.today()
+    standings_1gun = _cached_fetch(f"standings_1gun_{today}", scraping.fetch_standings_1gun)
+    _, regular_is_final = _regular_season_end(today)
+
     hitter_headline, pitcher_headline = _cached_fetch(
         "callup_headlines",
         _build_callup_headlines,
@@ -321,6 +326,8 @@ def team_list(request):
             "latest_games": latest_games,
             "hitter_headline": hitter_headline,
             "pitcher_headline": pitcher_headline,
+            "bracket": _postseason_bracket(standings_1gun),
+            "regular_is_final": regular_is_final,
             "team_ids_by_name": team_ids_by_name,
         },
     )
@@ -423,6 +430,23 @@ def _regular_season_end(today, league_id=None):
 POSTSEASON_TEAMS = 5  # 1~5위가 포스트시즌에 진출한다(4·5위 와일드카드 결정전부터)
 
 
+def _postseason_bracket(standings_1gun):
+    """1군 순위 1~5위로 와일드카드 → 준PO → PO → 한국시리즈 대진을 만든다.
+
+    상위 라운드는 순위가 높은 팀이 먼저 기다리고, 상대는 직전 라운드 승자다.
+    순위표를 못 받아왔거나 5팀이 안 되면 대진을 만들 수 없으므로 빈 리스트를 돌려준다.
+    """
+    if len(standings_1gun) < POSTSEASON_TEAMS:
+        return []
+    first, second, third, fourth, fifth = standings_1gun[:POSTSEASON_TEAMS]
+    return [
+        {"key": "wc", "name": "와일드카드 결정전", "format": "4위 1승 안고 시작", "teams": [fourth, fifth], "waiting_for": ""},
+        {"key": "spo", "name": "준플레이오프", "format": "5전 3선승제", "teams": [third], "waiting_for": "와일드카드 승자"},
+        {"key": "po", "name": "플레이오프", "format": "5전 3선승제", "teams": [second], "waiting_for": "준플레이오프 승자"},
+        {"key": "ks", "name": "한국시리즈", "format": "7전 4선승제", "teams": [first], "waiting_for": "플레이오프 승자"},
+    ]
+
+
 def standings(request):
     # 캐시 키에 날짜를 포함해, sync_roster(크론)가 실패하거나 건너뛰어도(경기 없는 날 포함)
     # 날짜가 바뀌면 자동으로 새로 스크래핑하게 한다. 같은 날 안에서는 그대로 재사용해 부담을 줄인다.
@@ -442,16 +466,11 @@ def standings(request):
 
     team_ids_by_name = dict(Team.objects.values_list("name", "id"))
 
-    # 포스트시즌 대진표는 5위(와일드카드)부터 1위(한국시리즈 직행)까지 왼쪽에서 오른쪽으로 놓는다.
-    # 순위표를 못 받아왔거나 5팀이 안 되면 대진표 자체를 그리지 않는다.
-    bracket_teams = list(reversed(standings_1gun[:POSTSEASON_TEAMS])) if len(standings_1gun) >= POSTSEASON_TEAMS else []
-
     return render(
         request,
         "roster/standings.html",
         {
             "standings_1gun": standings_1gun,
-            "bracket_teams": bracket_teams,
             "standings_2gun": standings_2gun,
             "regular_end": regular_end,
             "regular_is_final": regular_is_final,
