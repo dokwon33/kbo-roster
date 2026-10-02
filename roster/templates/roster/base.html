@@ -83,11 +83,22 @@
       background: #14213d; color: #fff; border: none; border-radius: 6px;
       padding: 6px 14px; cursor: pointer; font-family: inherit;
     }
-    .whatsnew-list { list-style: none; margin: 0; padding: 0; }
-    .whatsnew-list li { padding: 10px 0; border-bottom: 1px solid #f0f1f3; line-height: 1.5; color: #374151; font-size: 14px; }
-    .whatsnew-list li:last-child { border-bottom: none; }
+    /* 업데이트 소식: 날짜별 목록만 먼저 보여주고, 누른 날짜의 내용만 펼친다. */
+    .whatsnew-entry { border-bottom: 1px solid #e5e7eb; }
+    .whatsnew-entry:last-child { border-bottom: none; }
+    .whatsnew-entry summary {
+      display: flex; align-items: center; gap: 8px; padding: 12px 2px;
+      cursor: pointer; list-style: none; font-size: 15px; font-weight: 600; color: #14213d;
+    }
+    .whatsnew-entry summary::-webkit-details-marker { display: none; }
+    .whatsnew-entry summary::after { content: "›"; margin-left: auto; font-size: 20px; color: #94a3b8; transition: transform .15s; }
+    .whatsnew-entry[open] summary::after { transform: rotate(90deg); }
+    .whatsnew-entry summary:hover { color: #1e3a8a; }
+    .whatsnew-entry summary:focus-visible { outline: 2px solid #93c5fd; outline-offset: -2px; border-radius: 6px; }
+    .whatsnew-new { font-size: 11px; font-weight: 700; color: #fff; background: #ef4444; border-radius: 999px; padding: 1px 7px; }
+    .whatsnew-list { list-style: none; margin: 0; padding: 0 2px 8px; }
+    .whatsnew-list li { padding: 8px 0; border-top: 1px dashed #e5e7eb; line-height: 1.5; color: #374151; font-size: 14px; }
     .whatsnew-list strong { display: block; color: #14213d; margin-bottom: 2px; }
-    .whatsnew-divider { border: none; border-top: 1px dashed #cbd5e1; margin: 20px 0 4px; }
     .site-footer {
       max-width: 1000px; margin: 32px auto 0; padding: 16px;
       display: flex; align-items: center; justify-content: center; gap: 16px;
@@ -191,32 +202,45 @@
 
   <dialog id="whatsNewDialog">
     <div class="dialog-body">
-      <h3>🎉 업데이트 소식 (8/6)</h3>
-      <ul class="whatsnew-list">
-        <li><strong>🏆 오늘의 승부예측 2차 이벤트</strong>8/7~8/13 사이, 그날 열리는 KBO 경기의 승자를 예측하고 인스타그램 아이디로 응모해보세요. 메뉴의 "승부예측"에서 참여할 수 있어요.</li>
-      </ul>
-      <hr class="whatsnew-divider">
-      <h3>🎉 업데이트 소식 (8/3)</h3>
-      <ul class="whatsnew-list">
-        <li><strong>✅ 예측 결과 실시간 확인</strong>제출한 예측을 경기 결과 발표 전에도 경기별로 진행 중/적중/실패 상태를 카드로 바로 확인할 수 있어요.</li>
-        <li><strong>🆕 최근 변동 선수 NEW 표시</strong>구단별 현황에서 7일 이내 새로 변동된 선수에 NEW 표시가 붙고, 메인 화면은 2주 넘게 변동 없는 선수는 자동으로 정리돼요.</li>
-      </ul>
-      <hr class="whatsnew-divider">
-      <h3>🎉 업데이트 소식 (7/27)</h3>
-      <ul class="whatsnew-list">
-        <li><strong>🔔 마이팀 실시간 알림</strong>구단 페이지에서 '이 팀 알림 받기'를 누르면 그 팀의 1군 등록/2군 말소 소식을 휴대폰·브라우저 알림으로 받아볼 수 있어요. 아이폰은 설정이 조금 다르니 메뉴의 "🔔 알림 받는 방법"을 확인해주세요.</li>
-        <li><strong>📱 모바일 반응형 디자인</strong>휴대폰에서도 메뉴·표·카드가 훨씬 보기 편해졌어요.</li>
-        <li><strong>🔗 팀명 클릭으로 바로 이동</strong>최근 경기 결과·리그 순위에서 팀명을 누르면 그 구단 현황 페이지로 바로 이동해요.</li>
-      </ul>
-      <hr class="whatsnew-divider">
-      <h3>🎉 업데이트 소식 (7/25)</h3>
-      <ul class="whatsnew-list">
-        <li><strong>🔥 기대되는 2군 콜업 선수</strong>메인 화면에서 최근 콜업된 선수들의 2군 성적(OPS·평균자책점) 기준 기대주를 확인하세요.</li>
-        <li><strong>📰 뉴스 AI 요약 즉시 표시</strong>선수 상세 페이지에 들어가면 바로 요약이 보여요.</li>
-        <li><strong>⚡️ 로딩 속도 개선</strong>리그 순위 · 매진율 통계 · 구단별 현황이 훨씬 빨라졌어요.</li>
-        <li><strong>🗓 날짜별 구분선</strong>최근 변동 페이지가 더 보기 편해졌어요.</li>
-        <li><strong>💌 의견 보내기</strong>메뉴에서 바로 의견을 남기면 개발자에게 이메일로 전달돼요.</li>
-      </ul>
+      <h3>🎉 업데이트 소식</h3>
+      <details class="whatsnew-entry">
+        <summary>10/3 업데이트 <span class="whatsnew-new">NEW</span></summary>
+        <ul class="whatsnew-list">
+          <li><strong>🏆 포스트시즌 대진표</strong>리그 순위 페이지에서 1~5위 팀으로 짜인 와일드카드부터 한국시리즈까지의 대진표를 볼 수 있어요. 시즌 중엔 현재 순위 기준 예상, 정규시즌이 끝나면 최종 순위 기준으로 보여줘요.</li>
+          <li><strong>⚡️ 메인 화면 로딩 속도 개선</strong>메인 화면의 "기대되는 2군 콜업 선수"를 미리 준비해둬서, 가끔 첫 화면이 몇 초씩 늦게 뜨던 현상이 줄었어요.</li>
+        </ul>
+      </details>
+      <details class="whatsnew-entry">
+        <summary>8/6 업데이트</summary>
+        <ul class="whatsnew-list">
+          <li><strong>🏆 오늘의 승부예측 2차 이벤트</strong>8/7~8/13 사이, 그날 열리는 KBO 경기의 승자를 예측하고 인스타그램 아이디로 응모해보세요. 메뉴의 "승부예측"에서 참여할 수 있어요.</li>
+        </ul>
+      </details>
+      <details class="whatsnew-entry">
+        <summary>8/3 업데이트</summary>
+        <ul class="whatsnew-list">
+          <li><strong>✅ 예측 결과 실시간 확인</strong>제출한 예측을 경기 결과 발표 전에도 경기별로 진행 중/적중/실패 상태를 카드로 바로 확인할 수 있어요.</li>
+          <li><strong>🆕 최근 변동 선수 NEW 표시</strong>구단별 현황에서 7일 이내 새로 변동된 선수에 NEW 표시가 붙고, 메인 화면은 2주 넘게 변동 없는 선수는 자동으로 정리돼요.</li>
+        </ul>
+      </details>
+      <details class="whatsnew-entry">
+        <summary>7/27 업데이트</summary>
+        <ul class="whatsnew-list">
+          <li><strong>🔔 마이팀 실시간 알림</strong>구단 페이지에서 '이 팀 알림 받기'를 누르면 그 팀의 1군 등록/2군 말소 소식을 휴대폰·브라우저 알림으로 받아볼 수 있어요. 아이폰은 설정이 조금 다르니 메뉴의 "🔔 알림 받는 방법"을 확인해주세요.</li>
+          <li><strong>📱 모바일 반응형 디자인</strong>휴대폰에서도 메뉴·표·카드가 훨씬 보기 편해졌어요.</li>
+          <li><strong>🔗 팀명 클릭으로 바로 이동</strong>최근 경기 결과·리그 순위에서 팀명을 누르면 그 구단 현황 페이지로 바로 이동해요.</li>
+        </ul>
+      </details>
+      <details class="whatsnew-entry">
+        <summary>7/25 업데이트</summary>
+        <ul class="whatsnew-list">
+          <li><strong>🔥 기대되는 2군 콜업 선수</strong>메인 화면에서 최근 콜업된 선수들의 2군 성적(OPS·평균자책점) 기준 기대주를 확인하세요.</li>
+          <li><strong>📰 뉴스 AI 요약 즉시 표시</strong>선수 상세 페이지에 들어가면 바로 요약이 보여요.</li>
+          <li><strong>⚡️ 로딩 속도 개선</strong>리그 순위 · 매진율 통계 · 구단별 현황이 훨씬 빨라졌어요.</li>
+          <li><strong>🗓 날짜별 구분선</strong>최근 변동 페이지가 더 보기 편해졌어요.</li>
+          <li><strong>💌 의견 보내기</strong>메뉴에서 바로 의견을 남기면 개발자에게 이메일로 전달돼요.</li>
+        </ul>
+      </details>
     </div>
     <div class="dialog-footer">
       <button type="button" class="close-btn" onclick="document.getElementById('whatsNewDialog').close()">확인했어요</button>
