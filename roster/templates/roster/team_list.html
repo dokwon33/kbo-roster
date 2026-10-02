@@ -219,6 +219,37 @@
     {% endfor %}
   </div>
 
+  {% if bracket %}
+    <div class="bracket-section">
+      <h2>
+        🏆 포스트시즌 {% if not regular_is_final %}예상 {% endif %}대진표
+        <span class="bracket-basis">{% if regular_is_final %}정규시즌 최종 순위 기준{% else %}현재 순위 기준{% endif %}</span>
+      </h2>
+      <div class="bracket-ladder">
+        {% for series in bracket %}
+          <div class="series-card series-{{ series.key }}">
+            <div class="series-head">
+              <span class="series-name">{{ series.name }}</span>
+              <span class="series-format">{{ series.format }}</span>
+            </div>
+            {% for row in series.teams %}
+              <div class="series-team">
+                <span class="series-seed">{{ row.rank }}</span>
+                {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
+                  {% if logo %}<img src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                  {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
+                {% endwith %}
+              </div>
+            {% endfor %}
+            {% if series.waiting_for %}
+              <div class="series-team is-waiting"><span class="series-seed">?</span>{{ series.waiting_for }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   <div class="latest-games-section">
     <h2>
       최근 경기 결과
@@ -281,34 +312,4 @@
       {% endfor %}
     </div>
   </div>
-  {% if bracket %}
-    <div class="bracket-section">
-      <h2>
-        🏆 포스트시즌 {% if not regular_is_final %}예상 {% endif %}대진표
-        <span class="bracket-basis">{% if regular_is_final %}정규시즌 최종 순위 기준{% else %}현재 순위 기준{% endif %}</span>
-      </h2>
-      <div class="bracket-ladder">
-        {% for series in bracket %}
-          <div class="series-card series-{{ series.key }}">
-            <div class="series-head">
-              <span class="series-name">{{ series.name }}</span>
-              <span class="series-format">{{ series.format }}</span>
-            </div>
-            {% for row in series.teams %}
-              <div class="series-team">
-                <span class="series-seed">{{ row.rank }}</span>
-                {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
-                  {% if logo %}<img src="{{ logo }}" alt="" loading="lazy">{% endif %}
-                  {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
-                {% endwith %}
-              </div>
-            {% endfor %}
-            {% if series.waiting_for %}
-              <div class="series-team is-waiting"><span class="series-seed">?</span>{{ series.waiting_for }}</div>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
 {% endblock %}
