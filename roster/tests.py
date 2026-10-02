@@ -242,6 +242,53 @@ class FinalStandingsTests(TestCase):
         self.assertNotContains(resp, "정규시즌 최종")
 
 
+@_STATIC_STORAGE
+class PostseasonBracketTests(TestCase):
+    """순위 페이지의 포스트시즌 대진표 — 1~5위를 5위(와일드카드)부터 1위(한국시리즈 직행) 순으로 놓는다."""
+
+    REGULAR_END = date(2026, 10, 7)
+    TEAMS = ["KT", "삼성", "LG", "KIA", "두산", "SSG", "NC"]
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def _get(self, today=date(2026, 8, 1), team_count=len(TEAMS)):
+        rows = [
+            scraping.TeamStandingRow(
+                rank=str(i), team=team, games="100", wins="50", losses="50", draws="0",
+                win_pct="0.500", games_behind="0", recent_10="5승0무5패", streak="1승",
+                home_record="25-0-25", away_record="25-0-25", division="",
+            )
+            for i, team in enumerate(self.TEAMS[:team_count], start=1)
+        ]
+        with patch.object(scraping, "fetch_standings_1gun", return_value=rows), \
+             patch.object(scraping, "fetch_standings_2gun", return_value=[]), \
+             patch.object(scraping, "fetch_regular_season_end_date", return_value=self.REGULAR_END), \
+             patch("roster.views.date") as mock_date:
+            mock_date.today.return_value = today
+            return self.client.get(reverse("roster:standings"))
+
+    def test_top_five_from_fifth_to_first(self):
+        resp = self._get()
+
+        self.assertEqual([r.team for r in resp.context["bracket_teams"]], ["두산", "KIA", "LG", "삼성", "KT"])
+        self.assertContains(resp, "포스트시즌 대진표")
+        self.assertContains(resp, "현재 순위 기준 예상")
+
+    def test_final_standings_label_after_regular_season(self):
+        resp = self._get(today=date(2026, 10, 20))
+
+        self.assertContains(resp, "정규시즌 최종 순위 기준")
+        self.assertNotContains(resp, "현재 순위 기준 예상")
+
+    def test_hidden_when_standings_incomplete(self):
+        resp = self._get(team_count=3)
+
+        self.assertEqual(resp.context["bracket_teams"], [])
+        self.assertNotContains(resp, "포스트시즌 대진표")
+
+
 class CallupHeadlineTests(TestCase):
     """홈 화면 콜업 헤드라인 — 후보별 성적 요청을 병렬로 보내도 선정 결과는 순차 처리와 같아야 한다."""
 
