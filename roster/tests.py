@@ -244,21 +244,23 @@ class FinalStandingsTests(TestCase):
 
 @_STATIC_STORAGE
 class PostseasonBracketTests(TestCase):
-    """순위 페이지의 포스트시즌 대진표 — 1~5위를 5위(와일드카드)부터 1위(한국시리즈 직행) 순으로 놓는다."""
+    """메인 화면의 포스트시즌 예상 대진표 — 1~5위로 와일드카드부터 한국시리즈까지 대진을 만든다."""
 
     REGULAR_END = date(2026, 10, 7)
     TEAMS = ["KT", "삼성", "LG", "KIA", "두산", "SSG", "NC"]
     # 업데이트 소식 팝업(모든 페이지에 포함)에도 대진표 소개 문구가 있어서, 페이지 전체 문구 대신
     # 대진표 영역의 마크업으로 검사한다.
-    PREDICTED_TAG = '<span class="division-tag">현재 순위 기준 예상</span>'
-    FINAL_TAG = '<span class="division-tag">정규시즌 최종 순위 기준</span>'
+    PREDICTED_TAG = '<span class="bracket-basis">현재 순위 기준</span>'
+    FINAL_TAG = '<span class="bracket-basis">정규시즌 최종 순위 기준</span>'
 
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
+        cache.set("callup_headlines", (None, None))
+        cache.set("latest_game_results", (None, []))
 
-    def _get(self, today=date(2026, 8, 1), team_count=len(TEAMS)):
-        rows = [
+    def _rows(self, team_count):
+        return [
             scraping.TeamStandingRow(
                 rank=str(i), team=team, games="100", wins="50", losses="50", draws="0",
                 win_pct="0.500", games_behind="0", recent_10="5승0무5패", streak="1승",
@@ -266,18 +268,23 @@ class PostseasonBracketTests(TestCase):
             )
             for i, team in enumerate(self.TEAMS[:team_count], start=1)
         ]
-        with patch.object(scraping, "fetch_standings_1gun", return_value=rows), \
-             patch.object(scraping, "fetch_standings_2gun", return_value=[]), \
-             patch.object(scraping, "fetch_regular_season_end_date", return_value=self.REGULAR_END), \
-             patch("roster.views.date") as mock_date:
-            mock_date.today.return_value = today
-            return self.client.get(reverse("roster:standings"))
 
-    def test_top_five_from_fifth_to_first(self):
+    def _get(self, url_name="roster:team_list", today=date(2026, 8, 1), team_count=len(TEAMS)):
+        with patch.object(scraping, "fetch_standings_1gun", return_value=self._rows(team_count)),              patch.object(scraping, "fetch_standings_2gun", return_value=[]),              patch.object(scraping, "fetch_regular_season_end_date", return_value=self.REGULAR_END),              patch("roster.views.date") as mock_date:
+            mock_date.today.return_value = today
+            return self.client.get(reverse(url_name))
+
+    def test_series_matchups_on_main_page(self):
         resp = self._get()
 
-        self.assertEqual([r.team for r in resp.context["bracket_teams"]], ["두산", "KIA", "LG", "삼성", "KT"])
-        self.assertContains(resp, 'class="bracket-card"')
+        bracket = resp.context["bracket"]
+        self.assertEqual([s["key"] for s in bracket], ["wc", "spo", "po", "ks"])
+        self.assertEqual([r.team for r in bracket[0]["teams"]], ["KIA", "두산"])
+        self.assertEqual([[r.team for r in s["teams"]] for s in bracket[1:]], [["LG"], ["삼성"], ["KT"]])
+        self.assertEqual(
+            [s["waiting_for"] for s in bracket[1:]], ["와일드카드 승자", "준플레이오프 승자", "플레이오프 승자"]
+        )
+        self.assertContains(resp, 'class="bracket-ladder"')
         self.assertContains(resp, self.PREDICTED_TAG)
 
     def test_final_standings_label_after_regular_season(self):
@@ -289,8 +296,14 @@ class PostseasonBracketTests(TestCase):
     def test_hidden_when_standings_incomplete(self):
         resp = self._get(team_count=3)
 
-        self.assertEqual(resp.context["bracket_teams"], [])
-        self.assertNotContains(resp, 'class="bracket-card"')
+        self.assertEqual(resp.context["bracket"], [])
+        self.assertNotContains(resp, 'class="bracket-ladder"')
+
+    def test_not_on_standings_page(self):
+        resp = self._get(url_name="roster:standings")
+
+        self.assertNotIn("bracket", resp.context)
+        self.assertNotContains(resp, 'class="bracket-ladder"')
 
 
 class CallupHeadlineTests(TestCase):
