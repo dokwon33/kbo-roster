@@ -397,6 +397,9 @@ def _regular_season_end(today, league_id=None):
     return end, bool(end and today > end)
 
 
+POSTSEASON_TEAMS = 5  # 1~5위가 포스트시즌에 진출한다(4·5위 와일드카드 결정전부터)
+
+
 def standings(request):
     # 캐시 키에 날짜를 포함해, sync_roster(크론)가 실패하거나 건너뛰어도(경기 없는 날 포함)
     # 날짜가 바뀌면 자동으로 새로 스크래핑하게 한다. 같은 날 안에서는 그대로 재사용해 부담을 줄인다.
@@ -416,11 +419,16 @@ def standings(request):
 
     team_ids_by_name = dict(Team.objects.values_list("name", "id"))
 
+    # 포스트시즌 대진표는 5위(와일드카드)부터 1위(한국시리즈 직행)까지 왼쪽에서 오른쪽으로 놓는다.
+    # 순위표를 못 받아왔거나 5팀이 안 되면 대진표 자체를 그리지 않는다.
+    bracket_teams = list(reversed(standings_1gun[:POSTSEASON_TEAMS])) if len(standings_1gun) >= POSTSEASON_TEAMS else []
+
     return render(
         request,
         "roster/standings.html",
         {
             "standings_1gun": standings_1gun,
+            "bracket_teams": bracket_teams,
             "standings_2gun": standings_2gun,
             "regular_end": regular_end,
             "regular_is_final": regular_is_final,
