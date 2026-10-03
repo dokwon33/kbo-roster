@@ -26,6 +26,7 @@ from .models import (
     Feedback,
     NewsSummaryLog,
     Player,
+    PlayerNewsSummary,
     PredictionPick,
     PredictionSubmission,
     PushSubscription,
@@ -123,45 +124,110 @@ def _drop_stale(players, reference, days=ROSTER_STALE_DAYS):
 NEWS_SUMMARY_TTL = timedelta(hours=6)
 
 
-def _get_news_summary(player):
-    """선수 뉴스 AI 요약을 가져온다. 캐시가 없거나 오래됐으면 새로 생성해 Player에 저장한다.
+NEWS_STYLE_SESSION_KEY = "news_summary_style"
 
-    네이버 뉴스 API/Groq LLM 호출은 비용·응답 시간이 들기 때문에, 방문할 때마다 새로
-    호출하지 않고 결과를 DB에 캐싱해 NEWS_SUMMARY_TTL 동안 재사용한다. 조회가 실패해도
-    기존 캐시는 유지하고 재시도 시각만 갱신해, 장애 중에 매 요청마다 재시도하지 않는다.
+
+def _session_news_style(request):
+    """세션에 저장된 요약 스타일을 읽는다. 프리셋이 바뀌어 유효하지 않은 값이 남아있으면 기본값으로."""
+    style = request.session.get(NEWS_STYLE_SESSION_KEY, llm.DEFAULT_STYLE)
+    return style if style in llm.STYLE_PRESETS else llm.DEFAULT_STYLE
+
+
+def _article_dicts(articles):
+    return [
+        {"title": a.title, "description": a.description, "link": a.link, "pub_date": a.pub_date}
+        for a in articles
+    ]
+
+
+def _current_league(player):
+    status = player.current_status
+    if status and status.event_type == RosterEvent.ACTIVE_1GUN:
+        return "1군"
+    return "2군"
+
+
+def _fetch_season_stats(player):
+    """선수의 이번 시즌(현재 소속 리그 기준) 성적을 가져온다. 조회 실패 시 None."""
+    if not player.kbo_player_id:
+        return None
+    try:
+        return scraping.fetch_player_stats(player.kbo_player_id, player.position, _current_league(player))
+    except requests.RequestException:
+        return None
+
+
+def _get_news_summary(player, style=llm.DEFAULT_STYLE):
+    """선수 근황 AI 요약을 가져온다. 캐시가 없거나 오래됐으면 새로 생성해 저장한다.
+
+    네이버 뉴스 API/KBO 성적 조회/Groq LLM 호출은 비용·응답 시간이 들기 때문에, 방문할
+    때마다 새로 호출하지 않고 결과를 캐싱해 NEWS_SUMMARY_TTL 동안 재사용한다. 뉴스 조회가
+    실패해도 기존 캐시는 유지하고 재시도 시각만 갱신해, 장애 중에 매 요청마다 재시도하지 않는다.
+
+    기본(comprehensive) 스타일은 기존과 동일하게 Player에 직접 캐싱하고, "스탯 위주"를
+    고른 방문자만 PlayerNewsSummary에 별도로 캐싱한다 — 대다수인 기본 스타일 방문자는
+    추가 테이블 조회 없이 그대로 처리된다.
     """
-    is_stale = (
-        player.news_summary_updated_at is None
-        or timezone.now() - player.news_summary_updated_at > NEWS_SUMMARY_TTL
-    )
-    if not is_stale:
+    if style not in llm.STYLE_PRESETS:
+        style = llm.DEFAULT_STYLE
+    team_name = player.team.name if player.team else None
+
+    if style == llm.DEFAULT_STYLE:
+        is_stale = (
+            player.news_summary_updated_at is None
+            or timezone.now() - player.news_summary_updated_at > NEWS_SUMMARY_TTL
+        )
+        if not is_stale:
+            return player.news_summary, player.news_articles_cache
+
+        try:
+            articles = news.fetch_player_news(player.name, team_name)
+        except requests.RequestException:
+            articles = None
+        season_stats = _fetch_season_stats(player)
+
+        if articles is not None:
+            summary = (
+                llm.summarize_player_update(player.name, team_name, articles, season_stats, style=style)
+                if (articles or season_stats)
+                else None
+            )
+            player.news_summary = summary or ""
+            player.news_articles_cache = _article_dicts(articles)
+            if articles:
+                NewsSummaryLog.objects.create(
+                    player_name=player.name,
+                    team_name=team_name or "",
+                    prompt_version=llm.PROMPT_VERSION,
+                    articles=player.news_articles_cache,
+                    summary=summary or "",
+                )
+        player.news_summary_updated_at = timezone.now()
+        player.save(update_fields=["news_summary", "news_articles_cache", "news_summary_updated_at"])
         return player.news_summary, player.news_articles_cache
 
-    team_name = player.team.name if player.team else None
+    record, _ = PlayerNewsSummary.objects.get_or_create(player=player, style=style)
+    is_stale = record.updated_at is None or timezone.now() - record.updated_at > NEWS_SUMMARY_TTL
+    if not is_stale:
+        return record.summary, record.articles_cache
+
     try:
         articles = news.fetch_player_news(player.name, team_name)
     except requests.RequestException:
         articles = None
+    season_stats = _fetch_season_stats(player)
 
     if articles is not None:
-        summary = llm.summarize_player_news(player.name, team_name, articles) if articles else None
-        player.news_summary = summary or ""
-        player.news_articles_cache = [
-            {"title": a.title, "description": a.description, "link": a.link, "pub_date": a.pub_date}
-            for a in articles
-        ]
-        if articles:
-            NewsSummaryLog.objects.create(
-                player_name=player.name,
-                team_name=team_name or "",
-                prompt_version=llm.PROMPT_VERSION,
-                articles=player.news_articles_cache,
-                summary=summary or "",
-            )
-    player.news_summary_updated_at = timezone.now()
-    player.save(update_fields=["news_summary", "news_articles_cache", "news_summary_updated_at"])
-
-    return player.news_summary, player.news_articles_cache
+        summary = (
+            llm.summarize_player_update(player.name, team_name, articles, season_stats, style=style)
+            if (articles or season_stats)
+            else None
+        )
+        record.summary = summary or ""
+        record.articles_cache = _article_dicts(articles)
+    record.updated_at = timezone.now()
+    record.save(update_fields=["summary", "articles_cache", "updated_at"])
+    return record.summary, record.articles_cache
 
 
 CALLUP_CANDIDATE_LIMIT = 20  # 날짜(일수) 컷오프 대신 "가장 최근 콜업 N명" 방식 - 콜업이 뜸한 시기에도 헤드라인이 통째로 비지 않도록 함
@@ -380,6 +446,17 @@ def player_detail(request, player_id):
     # 네이버 뉴스/Groq LLM 호출은 몇 초씩 걸릴 수 있어, 상세 페이지 렌더링을 막지 않도록
     # 여기서는 이미 캐시된 값만 즉시 보여주고, 최신화(6시간 지났으면 재생성)는
     # player_news_summary 뷰를 JS로 비동기 호출해 처리한다.
+    news_style = _session_news_style(request)
+    if news_style == llm.DEFAULT_STYLE:
+        news_summary = player.news_summary
+        news_articles = player.news_articles_cache
+        news_summary_updated_at = player.news_summary_updated_at
+    else:
+        record = PlayerNewsSummary.objects.filter(player=player, style=news_style).first()
+        news_summary = record.summary if record else ""
+        news_articles = record.articles_cache if record else []
+        news_summary_updated_at = record.updated_at if record else None
+
     return render(
         request,
         "roster/player_detail.html",
@@ -389,9 +466,9 @@ def player_detail(request, player_id):
             "related_league": related_league,
             "related_stats": related_stats,
             "roster_periods": roster_periods,
-            "news_summary": player.news_summary,
-            "news_articles": player.news_articles_cache,
-            "news_summary_updated_at": player.news_summary_updated_at,
+            "news_summary": news_summary,
+            "news_articles": news_articles,
+            "news_summary_updated_at": news_summary_updated_at,
             "llm_model": settings.GROQ_MODEL,
         },
     )
@@ -539,8 +616,19 @@ def attendance_stats(request):
 
 
 def player_news(request, player_id):
+    """선수 관련 뉴스 + AI 요약 페이지.
+
+    쿼리 파라미터 ?style=stats 등으로 요약 범위를 고르면 세션에 저장해, 이후
+    이 선수든 다른 선수든 계속 그 스타일로 요약을 보여준다(질문에 한 번만 답하면 됨).
+    """
     player = get_object_or_404(Player, pk=player_id)
-    summary, articles = _get_news_summary(player)
+
+    requested_style = request.GET.get("style")
+    if requested_style in llm.STYLE_PRESETS:
+        request.session[NEWS_STYLE_SESSION_KEY] = requested_style
+    news_style = _session_news_style(request)
+
+    summary, articles = _get_news_summary(player, style=news_style)
 
     return render(
         request,
@@ -550,6 +638,8 @@ def player_news(request, player_id):
             "articles": articles,
             "summary": summary,
             "llm_model": settings.GROQ_MODEL,
+            "style_presets": llm.STYLE_PRESETS,
+            "news_style": news_style,
         },
     )
 
@@ -563,7 +653,8 @@ def player_news_summary(request, player_id):
     화면 렌더링을 막지 않는다.
     """
     player = get_object_or_404(Player, pk=player_id)
-    summary, articles = _get_news_summary(player)
+    news_style = _session_news_style(request)
+    summary, articles = _get_news_summary(player, style=news_style)
     return JsonResponse({
         "summary": summary,
         "article_count": len(articles or []),

@@ -114,7 +114,7 @@
     <div class="summary-card" id="news-summary-card" data-summary-url="{% url 'roster:player_news_summary' player.id %}">
       {% if news_summary_updated_at %}
         <p id="news-summary-text">{{ news_summary|default:"요약을 생성하지 못했습니다." }}</p>
-        <p class="summary-note" id="news-summary-note">※ 오픈소스 LLM({{ llm_model }})이 검색된 기사를 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+        <p class="summary-note" id="news-summary-note">※ 오픈소스 LLM({{ llm_model }})이 관련 기사·이번 시즌 성적을 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
       {% else %}
         <p id="news-summary-text" style="color:#64748b;">최신 뉴스를 불러오는 중...</p>
       {% endif %}
@@ -141,7 +141,7 @@
             var note = document.createElement("p");
             note.className = "summary-note";
             note.id = "news-summary-note";
-            note.textContent = "※ 오픈소스 LLM(" + data.llm_model + ")이 검색된 기사를 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.";
+            note.textContent = "※ 오픈소스 LLM(" + data.llm_model + ")이 관련 기사·이번 시즌 성적을 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.";
             card.appendChild(note);
           }
 

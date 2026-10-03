@@ -59,6 +59,28 @@ class Player(models.Model):
         return self.events.order_by("-event_date", "-id").first()
 
 
+class PlayerNewsSummary(models.Model):
+    """스타일별(간결하게/상세하게 등) AI 요약 캐시.
+
+    기본 스타일은 Player.news_summary에 그대로 캐싱하고(기존 동작 유지), 그 외
+    스타일을 고른 방문자를 위해서만 이 테이블에 별도로 캐싱한다.
+    """
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="style_summaries")
+    style = models.CharField(max_length=20)
+    summary = models.TextField(blank=True)
+    articles_cache = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["player", "style"], name="unique_player_news_style"),
+        ]
+
+    def __str__(self):
+        return f"{self.player.name} ({self.style})"
+
+
 class NewsSummaryLog(models.Model):
     """뉴스 요약을 새로 생성할 때마다 남기는 기록. Player의 캐시 필드는 TTL마다 덮어써지므로,
     프롬프트 실험(golden set 확장 등)에 쓸 수 있도록 이력을 별도로 쌓아둔다."""

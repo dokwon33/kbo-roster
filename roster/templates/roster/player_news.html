@@ -17,6 +17,14 @@
   .summary-card p { margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; }
   .summary-note { font-size: 12px; color: #6366f1; margin-top: 8px; }
 
+  .style-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .style-picker span { font-size: 13px; color: #64748b; }
+  .style-picker a {
+    font-size: 13px; padding: 4px 10px; border-radius: 999px; text-decoration: none;
+    color: #3730a3; background: #eef2ff; border: 1px solid #c7d2fe;
+  }
+  .style-picker a.active { background: #4338ca; border-color: #4338ca; color: #fff; }
+
   .article-list { display: flex; flex-direction: column; gap: 12px; }
   .article-card {
     background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
@@ -36,12 +44,19 @@
   <a class="back-link" href="{% url 'roster:player_detail' player.id %}">&larr; {{ player.name }}</a>
   <h1 style="font-size:20px; color:#14213d; margin-bottom:16px;">📰 {{ player.name }} 관련 뉴스</h1>
 
+  <div class="style-picker">
+    <span>AI 요약 스타일</span>
+    {% for key, preset in style_presets.items %}
+      <a href="?style={{ key }}" class="{% if key == news_style %}active{% endif %}">{{ preset.label }}</a>
+    {% endfor %}
+  </div>
+
   {% if summary %}
     <div class="summary-card">
       <h3>AI 요약</h3>
       <p>{{ summary }}</p>
       <br>
-      <p class="summary-note">※ 오픈소스 LLM({{ llm_model }})이 아래 기사 목록만 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
+      <p class="summary-note">※ 오픈소스 LLM({{ llm_model }})이 관련 기사·이번 시즌 성적을 보고 생성한 설명입니다. 실제 사실 확인은 원문 기사를 참고하세요.</p>
     </div>
   {% elif articles %}
     <div class="summary-card">
