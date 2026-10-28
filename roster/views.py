@@ -2,7 +2,7 @@ import hmac
 import io
 import json
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, time as dt_time, timedelta
 from pathlib import Path
@@ -307,6 +307,13 @@ def team_list(request):
     today = date.today()
     standings_1gun = _cached_fetch(f"standings_1gun_{today}", scraping.fetch_standings_1gun)
     _, regular_is_final = _regular_season_end(today)
+    # 포스트시즌은 경기 결과가 밤에 갈리므로, 날짜 캐시로 묶으면 다음 날까지 전날 대진이 남는다.
+    # 최근 경기 결과와 같은 짧은 주기로 다시 긁어 당일 안에 반영되게 한다.
+    postseason_games = _cached_fetch(
+        f"postseason_games_{today}",
+        lambda: scraping.fetch_postseason_games(today.year),
+        timeout=GAME_RESULTS_CACHE_TIMEOUT,
+    )
 
     hitter_headline, pitcher_headline = _cached_fetch(
         "callup_headlines",
@@ -326,7 +333,8 @@ def team_list(request):
             "latest_games": latest_games,
             "hitter_headline": hitter_headline,
             "pitcher_headline": pitcher_headline,
-            "bracket": _postseason_bracket(standings_1gun),
+            "bracket": _postseason_bracket(standings_1gun, postseason_games),
+            "postseason_started": bool(postseason_games),
             "regular_is_final": regular_is_final,
             "team_ids_by_name": team_ids_by_name,
         },
@@ -430,21 +438,125 @@ def _regular_season_end(today, league_id=None):
 POSTSEASON_TEAMS = 5  # 1~5위가 포스트시즌에 진출한다(4·5위 와일드카드 결정전부터)
 
 
-def _postseason_bracket(standings_1gun):
-    """1군 순위 1~5위로 와일드카드 → 준PO → PO → 한국시리즈 대진을 만든다.
+# 라운드 순서대로: (키, 이름, 방식, 직전 라운드 승자를 기다릴 때 쓰는 문구, 시드 순위)
+POSTSEASON_ROUNDS = [
+    ("wc", "와일드카드 결정전", "4위 1승 안고 시작", "", (4, 5)),
+    ("spo", "준플레이오프", "5전 3선승제", "와일드카드 승자", (3,)),
+    ("po", "플레이오프", "5전 3선승제", "준플레이오프 승자", (2,)),
+    ("ks", "한국시리즈", "7전 4선승제", "플레이오프 승자", (1,)),
+]
 
-    상위 라운드는 순위가 높은 팀이 먼저 기다리고, 상대는 직전 라운드 승자다.
+# 라운드별 선승 조건. 와일드카드는 4위가 1승을 안고 시작해서 1승만 더 하면 끝나고,
+# 5위는 2승(2경기 모두 승리)이 필요하다.
+SERIES_WINS_TO_CLINCH = {"wc": 1, "spo": 3, "po": 3, "ks": 4}
+WILDCARD_LOWER_SEED_WINS = 2
+
+
+def _series_participants(round_games):
+    """해당 라운드 경기 목록에서 실제로 확정된 팀 이름을 등장 순서대로 뽑는다.
+
+    대진이 아직 안 정해진 칸은 'PO 승리팀'처럼 안내 문구가 들어오므로 제외한다.
+    """
+    names = []
+    for game in round_games:
+        for name in (game.away, game.home):
+            if name not in names and not scraping.is_pending_team(name):
+                names.append(name)
+    return names
+
+
+def _series_winner(round_key, participants, wins, next_participants, rank_by_team):
+    """시리즈 승자. 다음 라운드에 올라간 팀이 곧 이 라운드 승자다.
+
+    KBO가 다음 라운드 대진을 올리기 전이거나 마지막 라운드(한국시리즈)라서
+    그 방법이 안 통할 때는 선승 조건으로 판단한다.
+    """
+    advanced = [t for t in participants if t in next_participants]
+    if len(advanced) == 1:
+        return advanced[0]
+
+    need = SERIES_WINS_TO_CLINCH[round_key]
+    # 와일드카드만 두 팀의 조건이 다르다 — 1승을 안고 시작하는 상위 시드를 찾아둔다.
+    higher_seed = None
+    if round_key == "wc" and len(participants) == 2:
+        higher_seed = min(participants, key=lambda t: _seed_rank(t, rank_by_team))
+
+    for team in participants:
+        threshold = need if higher_seed is None or team == higher_seed else WILDCARD_LOWER_SEED_WINS
+        if wins.get(team, 0) >= threshold:
+            return team
+    return None
+
+
+def _seed_rank(team, rank_by_team):
+    """정렬용 순위 숫자. 순위를 모르면 가장 낮은 시드로 취급한다."""
+    try:
+        return int(rank_by_team.get(team, ""))
+    except ValueError:
+        return POSTSEASON_TEAMS + 1
+
+
+def _postseason_bracket(standings_1gun, games=None):
+    """와일드카드 → 준PO → PO → 한국시리즈 대진표를 만든다.
+
+    경기 일정/결과가 있으면 그걸 우선 반영하고(실제 대진·전적·남은 일정),
+    아직 경기가 없는 라운드는 정규시즌 순위로 예상 대진을 채운다.
     순위표를 못 받아왔거나 5팀이 안 되면 대진을 만들 수 없으므로 빈 리스트를 돌려준다.
     """
     if len(standings_1gun) < POSTSEASON_TEAMS:
         return []
-    first, second, third, fourth, fifth = standings_1gun[:POSTSEASON_TEAMS]
-    return [
-        {"key": "wc", "name": "와일드카드 결정전", "format": "4위 1승 안고 시작", "teams": [fourth, fifth], "waiting_for": ""},
-        {"key": "spo", "name": "준플레이오프", "format": "5전 3선승제", "teams": [third], "waiting_for": "와일드카드 승자"},
-        {"key": "po", "name": "플레이오프", "format": "5전 3선승제", "teams": [second], "waiting_for": "준플레이오프 승자"},
-        {"key": "ks", "name": "한국시리즈", "format": "7전 4선승제", "teams": [first], "waiting_for": "플레이오프 승자"},
-    ]
+
+    games = games or []
+    seed_rows = standings_1gun[:POSTSEASON_TEAMS]
+    row_by_rank = {index + 1: row for index, row in enumerate(seed_rows)}
+    rank_by_team = {row.team: row.rank for row in standings_1gun}
+
+    games_by_round = {key: [] for key, *_ in POSTSEASON_ROUNDS}
+    for game in games:
+        if game.round_key in games_by_round:
+            games_by_round[game.round_key].append(game)
+
+    participants = {
+        key: _series_participants(games_by_round[key]) for key, *_ in POSTSEASON_ROUNDS
+    }
+
+    bracket = []
+    for index, (key, name, series_format, waiting_label, seed_ranks) in enumerate(POSTSEASON_ROUNDS):
+        round_games = games_by_round[key]
+        wins = Counter(g.winner for g in round_games if g.winner)
+
+        next_key = POSTSEASON_ROUNDS[index + 1][0] if index + 1 < len(POSTSEASON_ROUNDS) else None
+        winner = _series_winner(
+            key, participants[key], wins,
+            participants[next_key] if next_key else [], rank_by_team,
+        )
+
+        team_names = participants[key] or [
+            row_by_rank[rank].team for rank in seed_ranks if rank in row_by_rank
+        ]
+        teams = [
+            {
+                "team": team,
+                "rank": rank_by_team.get(team, ""),
+                "wins": wins.get(team, 0),
+                "is_winner": team == winner,
+            }
+            for team in team_names
+        ]
+
+        upcoming = [g for g in round_games if not g.is_played]
+        bracket.append({
+            "key": key,
+            "name": name,
+            "format": series_format,
+            "teams": teams,
+            # 상대가 아직 안 정해졌으면 직전 라운드 승자를 기다리는 칸을 하나 남겨둔다.
+            "waiting_for": waiting_label if len(teams) < 2 else "",
+            "games": round_games,
+            "next_game": upcoming[0] if upcoming and not winner else None,
+            "is_decided": bool(winner),
+        })
+    return bracket
 
 
 def standings(request):

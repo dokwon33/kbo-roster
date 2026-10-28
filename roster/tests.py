@@ -244,14 +244,19 @@ class FinalStandingsTests(TestCase):
 
 @_STATIC_STORAGE
 class PostseasonBracketTests(TestCase):
-    """메인 화면의 포스트시즌 예상 대진표 — 1~5위로 와일드카드부터 한국시리즈까지 대진을 만든다."""
+    """메인 화면 포스트시즌 대진표.
+
+    경기가 시작되기 전에는 정규시즌 순위로 예상 대진을 세우고, 시작한 뒤에는
+    실제 결과·남은 일정을 반영한다.
+    """
 
     REGULAR_END = date(2026, 10, 7)
-    TEAMS = ["KT", "삼성", "LG", "KIA", "두산", "SSG", "NC"]
+    TEAMS = ["KT", "삼성", "KIA", "LG", "두산", "SSG", "NC"]
     # 업데이트 소식 팝업(모든 페이지에 포함)에도 대진표 소개 문구가 있어서, 페이지 전체 문구 대신
     # 대진표 영역의 마크업으로 검사한다.
     PREDICTED_TAG = '<span class="bracket-basis">현재 순위 기준</span>'
     FINAL_TAG = '<span class="bracket-basis">정규시즌 최종 순위 기준</span>'
+    LIVE_TAG = '<span class="bracket-basis">경기 결과 반영</span>'
 
     def setUp(self):
         cache.clear()
@@ -269,18 +274,23 @@ class PostseasonBracketTests(TestCase):
             for i, team in enumerate(self.TEAMS[:team_count], start=1)
         ]
 
-    def _get(self, url_name="roster:team_list", today=date(2026, 8, 1), team_count=len(TEAMS)):
-        with patch.object(scraping, "fetch_standings_1gun", return_value=self._rows(team_count)),              patch.object(scraping, "fetch_standings_2gun", return_value=[]),              patch.object(scraping, "fetch_regular_season_end_date", return_value=self.REGULAR_END),              patch("roster.views.date") as mock_date:
+    def _get(self, url_name="roster:team_list", today=date(2026, 8, 1),
+             team_count=len(TEAMS), games=None):
+        with patch.object(scraping, "fetch_standings_1gun", return_value=self._rows(team_count)), \
+             patch.object(scraping, "fetch_standings_2gun", return_value=[]), \
+             patch.object(scraping, "fetch_postseason_games", return_value=games or []), \
+             patch.object(scraping, "fetch_regular_season_end_date", return_value=self.REGULAR_END), \
+             patch("roster.views.date") as mock_date:
             mock_date.today.return_value = today
             return self.client.get(reverse(url_name))
 
-    def test_series_matchups_on_main_page(self):
+    def test_predicted_matchups_before_postseason(self):
         resp = self._get()
 
         bracket = resp.context["bracket"]
         self.assertEqual([s["key"] for s in bracket], ["wc", "spo", "po", "ks"])
-        self.assertEqual([r.team for r in bracket[0]["teams"]], ["KIA", "두산"])
-        self.assertEqual([[r.team for r in s["teams"]] for s in bracket[1:]], [["LG"], ["삼성"], ["KT"]])
+        self.assertEqual([t["team"] for t in bracket[0]["teams"]], ["LG", "두산"])
+        self.assertEqual([[t["team"] for t in s["teams"]] for s in bracket[1:]], [["KIA"], ["삼성"], ["KT"]])
         self.assertEqual(
             [s["waiting_for"] for s in bracket[1:]], ["와일드카드 승자", "준플레이오프 승자", "플레이오프 승자"]
         )
@@ -304,6 +314,86 @@ class PostseasonBracketTests(TestCase):
 
         self.assertNotIn("bracket", resp.context)
         self.assertNotContains(resp, 'class="bracket-ladder"')
+
+    # --- 실제 경기 결과 반영 ---
+    # 2026 포스트시즌을 축약한 상황: WC는 LG가 끝냈고, 준PO는 KIA가 3승으로 올라갔으며,
+    # PO는 KIA와 삼성이 1승씩 주고받은 상태에서 3차전이 남아 있다.
+    def _game(self, round_key, no, day, away, home, away_score=None, home_score=None,
+              stadium="광주", time="18:30"):
+        return scraping.PostseasonGame(
+            round_key=round_key, game_no=no, game_date=date(2026, 10, day), game_time=time,
+            away=away, home=home, away_score=away_score, home_score=home_score, stadium=stadium,
+        )
+
+    def _live_games(self):
+        return [
+            self._game("wc", 1, 14, "두산", "LG", 1, 4, stadium="잠실"),
+            self._game("spo", 1, 17, "LG", "KIA", 1, 5),
+            self._game("spo", 2, 18, "LG", "KIA", 3, 6),
+            self._game("spo", 3, 20, "KIA", "LG", 13, 1, stadium="잠실"),
+            self._game("po", 1, 26, "KIA", "삼성", 5, 1, stadium="대구"),
+            self._game("po", 2, 27, "KIA", "삼성", 3, 8, stadium="대구"),
+            self._game("po", 3, 29, "삼성", "KIA"),
+            self._game("ks", None, 31, "PO 승리팀", "KT", stadium="수원"),
+        ]
+
+    def _live_bracket(self):
+        resp = self._get(today=date(2026, 10, 28), games=self._live_games())
+        return resp, {s["key"]: s for s in resp.context["bracket"]}
+
+    def test_completed_rounds_show_actual_winner(self):
+        """다음 라운드에 올라간 팀으로 직전 라운드 승자를 판정한다."""
+        _, rounds = self._live_bracket()
+
+        wc = {t["team"]: t for t in rounds["wc"]["teams"]}
+        self.assertTrue(wc["LG"]["is_winner"])
+        self.assertFalse(wc["두산"]["is_winner"])
+        self.assertTrue(rounds["wc"]["is_decided"])
+
+        spo = {t["team"]: t for t in rounds["spo"]["teams"]}
+        self.assertEqual(spo["KIA"]["wins"], 3)
+        self.assertEqual(spo["LG"]["wins"], 0)
+        self.assertTrue(spo["KIA"]["is_winner"])
+
+    def test_live_round_shows_record_and_next_game(self):
+        """진행 중인 라운드는 승자 없이 전적과 다음 경기 일정을 보여준다."""
+        resp, rounds = self._live_bracket()
+        po = rounds["po"]
+
+        self.assertFalse(po["is_decided"])
+        self.assertEqual({t["team"]: t["wins"] for t in po["teams"]}, {"KIA": 1, "삼성": 1})
+        self.assertFalse(any(t["is_winner"] for t in po["teams"]))
+        self.assertEqual(po["next_game"].game_date, date(2026, 10, 29))
+        # 남은 일정은 날짜와 구장이 화면에 보여야 한다.
+        self.assertContains(resp, "10.29")
+        self.assertContains(resp, self.LIVE_TAG)
+
+    def test_matchup_replaces_seed_prediction(self):
+        """실제 대진이 생기면 순위 기반 예상 대진 대신 그 대진을 쓴다."""
+        _, rounds = self._live_bracket()
+
+        # 준PO는 순위만 보면 3위 KIA 혼자 기다리는 칸이지만, 실제로는 LG가 올라와 맞붙었다.
+        self.assertEqual(sorted(t["team"] for t in rounds["spo"]["teams"]), ["KIA", "LG"])
+        self.assertEqual(rounds["spo"]["waiting_for"], "")
+
+    def test_pending_opponent_still_waits(self):
+        """한국시리즈 상대가 'PO 승리팀'으로 들어와도 확정 팀으로 세지 않는다."""
+        _, rounds = self._live_bracket()
+        ks = rounds["ks"]
+
+        self.assertEqual([t["team"] for t in ks["teams"]], ["KT"])
+        self.assertEqual(ks["waiting_for"], "플레이오프 승자")
+        self.assertFalse(ks["is_decided"])
+
+    def test_korean_series_winner_from_clinch(self):
+        """마지막 라운드는 다음 라운드가 없으므로 4선승으로 우승을 판정한다."""
+        games = [self._game("ks", n, 20 + n, "KIA", "KT", 5, 1, stadium="수원") for n in range(1, 5)]
+        resp = self._get(today=date(2026, 11, 5), games=games)
+        ks = {s["key"]: s for s in resp.context["bracket"]}["ks"]
+
+        self.assertTrue(ks["is_decided"])
+        self.assertEqual([t["team"] for t in ks["teams"] if t["is_winner"]], ["KIA"])
+        self.assertIsNone(ks["next_game"])
 
 
 class CallupHeadlineTests(TestCase):
@@ -393,3 +483,75 @@ class CallupHeadlineTests(TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(cache.get("callup_headlines"))
+
+
+class PostseasonScheduleParsingTests(TestCase):
+    """KBO 일정표 응답 파싱 — 점수/플레이스홀더/라운드 표기가 섞여 들어온다."""
+
+    def _row(self, day, time, play, stadium, note):
+        cells = [day, time, play, "", "", "", "", stadium, note]
+        return {"row": [{"Text": c} for c in cells]}
+
+    def _payload(self, *rows):
+        return {"rows": list(rows)}
+
+    def test_parses_finished_game(self):
+        payload = self._payload(self._row(
+            "10.14(수)", "<b>18:30</b>",
+            '<span>두산</span><em><span class="lose">1</span><span>vs</span>'
+            '<span class="win">4</span></em><span>LG</span>',
+            "잠실", "WC 1차전",
+        ))
+        game, = scraping._parse_postseason_rows(payload, 2026)
+
+        self.assertEqual(
+            (game.round_key, game.game_no, game.away, game.home), ("wc", 1, "두산", "LG")
+        )
+        self.assertEqual((game.away_score, game.home_score), (1, 4))
+        self.assertEqual(game.game_date, date(2026, 10, 14))
+        self.assertEqual(game.stadium, "잠실")
+        self.assertEqual(game.winner, "LG")
+        self.assertEqual(game.result_label, "LG 4:1")
+
+    def test_parses_scheduled_game_without_score(self):
+        payload = self._payload(self._row(
+            "10.29(목)", "<b>18:30</b>",
+            "<span>삼성</span><em><span>vs</span></em><span>KIA</span>",
+            "광주", "PO 3차전",
+        ))
+        game, = scraping._parse_postseason_rows(payload, 2026)
+
+        self.assertFalse(game.is_played)
+        self.assertIsNone(game.winner)
+        self.assertEqual(game.game_time, "18:30")
+
+    def test_unlabelled_rows_fall_back_to_korean_series(self):
+        """한국시리즈는 대진 확정 전까지 비고란이 비어 있고 상대가 'PO 승리팀'으로 들어온다."""
+        payload = self._payload(self._row(
+            "11.02(월)", "<b>18:30</b>",
+            "<span>PO<br/>승리팀</span><em><span>vs</span></em><span>KT</span>",
+            "수원", "",
+        ))
+        game, = scraping._parse_postseason_rows(payload, 2026)
+
+        self.assertEqual(game.round_key, "ks")
+        self.assertEqual(game.away, "PO 승리팀")
+        self.assertTrue(game.has_pending_team)
+        self.assertTrue(scraping.is_pending_team(game.away))
+        self.assertFalse(scraping.is_pending_team(game.home))
+
+    def test_skips_travel_days_and_carries_date_forward(self):
+        """'이동일' 행은 경기가 없고, 같은 날 두 번째 경기는 날짜 칸이 비어 있다."""
+        payload = self._payload(
+            self._row("10.15(목)", "", "", "", "이동일"),
+            self._row("10.17(토)", "<b>14:00</b>",
+                      '<span>LG</span><em><span class="lose">1</span><span>vs</span>'
+                      '<span class="win">5</span></em><span>KIA</span>', "광주", "준PO 1차전"),
+            self._row("", "<b>18:30</b>",
+                      "<span>LG</span><em><span>vs</span></em><span>KIA</span>", "광주", "준PO 2차전"),
+        )
+        games = scraping._parse_postseason_rows(payload, 2026)
+
+        self.assertEqual([g.game_no for g in games], [1, 2])
+        self.assertEqual([g.game_date for g in games], [date(2026, 10, 17)] * 2)
+        self.assertEqual([g.round_key for g in games], ["spo", "spo"])

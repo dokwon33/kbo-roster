@@ -532,3 +532,156 @@ def fetch_attendance_rows() -> list:
     resp = requests.get(CROWD_URL, headers=HEADERS, timeout=15)
     resp.raise_for_status()
     return _parse_attendance_rows(resp.text)
+
+
+SCHEDULE_LIST_URL = "https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList"
+SCHEDULE_REFERER = "https://www.koreabaseball.com/Schedule/Schedule.aspx"
+POSTSEASON_SERIES_IDS = "3,4,5,7"  # 준PO, 와일드카드, PO, 한국시리즈
+ALL_MONTHS = "0"  # gameMonth=0 이면 해당 시즌 전체를 한 번에 돌려준다.
+
+# 일정표 비고란의 라운드 표기 → 대진표 키. '준PO'가 'PO'를 포함하므로 긴 쪽을 먼저 매칭한다.
+_ROUND_LABEL_RE = re.compile(r"(준PO|WC|PO|KS)\s*(\d+)차전")
+_ROUND_KEYS = {"WC": "wc", "준PO": "spo", "PO": "po", "KS": "ks"}
+# 상대가 아직 안 정해진 칸은 실제 팀명 대신 'PO 승리팀' 같은 안내 문구가 들어온다.
+_PENDING_TEAM_RE = re.compile(r"승리팀|미정")
+
+_SCHEDULE_DATE_RE = re.compile(r"(\d{1,2})\.(\d{1,2})")
+
+
+def is_pending_team(name: str) -> bool:
+    """'PO 승리팀'처럼 아직 팀이 확정되지 않은 자리인지."""
+    return bool(_PENDING_TEAM_RE.search(name or ""))
+
+
+@dataclass
+class PostseasonGame:
+    round_key: str  # wc / spo / po / ks
+    game_no: int | None
+    game_date: date
+    game_time: str
+    away: str
+    home: str
+    away_score: int | None
+    home_score: int | None
+    stadium: str
+
+    @property
+    def is_played(self) -> bool:
+        return self.away_score is not None and self.home_score is not None
+
+    @property
+    def has_pending_team(self) -> bool:
+        return is_pending_team(self.away) or is_pending_team(self.home)
+
+    @property
+    def winner(self) -> str | None:
+        """무승부(연장 끝 동점)면 None. 승자가 없으면 시리즈 전적에 넣지 않는다."""
+        if not self.is_played or self.away_score == self.home_score:
+            return None
+        return self.away if self.away_score > self.home_score else self.home
+
+    @property
+    def result_label(self) -> str:
+        """'KIA 5:1'처럼 이긴 팀을 앞세운 결과 문구. 점수만 보면 누가 이겼는지 알 수 없어서다."""
+        if not self.is_played:
+            return ""
+        if self.winner is None:
+            return f"{self.away_score}:{self.home_score} 무"
+        high, low = max(self.away_score, self.home_score), min(self.away_score, self.home_score)
+        return f"{self.winner} {high}:{low}"
+
+
+def _parse_schedule_cell_teams(play_html: str):
+    """일정표 '경기' 칸에서 (원정, 홈, 원정점수, 홈점수)를 뽑는다.
+
+    종료 경기는 <em> 안에 점수가 들어오고, 예정 경기는 'vs'만 들어온다.
+    팀명 칸에 <br/>이 섞여 있어(예: 'PO<br/>승리팀') 공백으로 이어 붙인다.
+    """
+    soup = BeautifulSoup(play_html, "lxml")
+    score_box = soup.find("em")
+    scores = []
+    if score_box:
+        scores = [t for t in score_box.stripped_strings if t.isdigit()]
+
+    names = [
+        s.get_text(" ", strip=True)
+        for s in soup.find_all("span")
+        if not s.find_parent("em")
+    ]
+    names = [n for n in names if n]
+    if len(names) < 2:
+        return None
+
+    away_score, home_score = (int(scores[0]), int(scores[1])) if len(scores) == 2 else (None, None)
+    return names[0], names[-1], away_score, home_score
+
+
+def _parse_postseason_rows(payload: dict, year: int) -> list:
+    games = []
+    current_date = None
+    for entry in payload.get("rows", []):
+        cells = [c.get("Text") or "" for c in entry.get("row", [])]
+        if len(cells) < 9:
+            continue
+
+        # 날짜 칸은 같은 날 두 번째 경기부터 비어 있어, 직전 날짜를 이어서 쓴다.
+        matched = _SCHEDULE_DATE_RE.search(re.sub(r"<[^>]+>", "", cells[0]))
+        if matched:
+            current_date = date(year, int(matched.group(1)), int(matched.group(2)))
+        if current_date is None:
+            continue
+
+        teams = _parse_schedule_cell_teams(cells[2])
+        if teams is None:  # 이동일 등 경기가 없는 행
+            continue
+        away, home, away_score, home_score = teams
+
+        note = re.sub(r"<[^>]+>", "", cells[8]).strip()
+        label = _ROUND_LABEL_RE.search(note)
+        # 한국시리즈는 대진이 확정되기 전까지 비고란이 비어 있다. 마지막 라운드라 ks로 둔다.
+        round_key = _ROUND_KEYS[label.group(1)] if label else "ks"
+        game_no = int(label.group(2)) if label else None
+
+        games.append(
+            PostseasonGame(
+                round_key=round_key,
+                game_no=game_no,
+                game_date=current_date,
+                game_time=re.sub(r"<[^>]+>", "", cells[1]).strip(),
+                away=away,
+                home=home,
+                away_score=away_score,
+                home_score=home_score,
+                stadium=re.sub(r"<[^>]+>", "", cells[7]).strip(),
+            )
+        )
+    return games
+
+
+def fetch_postseason_games(year: int) -> list:
+    """해당 시즌 포스트시즌 전 경기(결과 + 남은 일정)를 날짜순으로 가져온다.
+
+    GameCenter를 날짜별로 두드리면 한 달에 30번씩 호출해야 하지만, 일정표 API는
+    gameMonth=0으로 시즌 전체를 한 번에 돌려준다.
+    """
+    resp = requests.post(
+        SCHEDULE_LIST_URL,
+        data={
+            "leId": LEAGUE_1GUN,
+            "srIdList": POSTSEASON_SERIES_IDS,
+            "seasonId": str(year),
+            "gameMonth": ALL_MONTHS,
+            "teamId": "",
+        },
+        headers={
+            **HEADERS,
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": SCHEDULE_REFERER,
+        },
+        timeout=20,
+    )
+    resp.raise_for_status()
+    games = _parse_postseason_rows(resp.json(), year)
+    games.sort(key=lambda g: (g.game_date, g.game_time))
+    return games

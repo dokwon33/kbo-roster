@@ -155,6 +155,22 @@
   .series-team img { width: 24px; height: 24px; object-fit: contain; }
   .series-team.is-waiting { color: #94a3b8; font-weight: 500; font-size: 13px; }
   .series-team.is-waiting .series-seed { background: none; border: 1.5px dashed #cbd5e1; color: #94a3b8; }
+  .series-wins { margin-left: auto; font-size: 13px; font-weight: 700; color: #94a3b8; }
+  .series-team.is-winner .series-wins { color: #15803d; }
+  .series-team.is-winner::after { content: "진출"; font-size: 10px; font-weight: 700; color: #15803d; }
+
+  /* 라운드별 경기 일정/결과 — 날짜와 구장이 보이도록 한 줄에 압축해서 담는다. */
+  .series-games { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid #f0f1f3; }
+  .series-games li {
+    display: grid; grid-template-columns: auto auto 1fr auto; gap: 6px; align-items: baseline;
+    font-size: 11px; color: #64748b; padding: 2px 0;
+  }
+  .series-games li.is-next { color: #1d4ed8; font-weight: 600; }
+  .series-games .g-date { font-variant-numeric: tabular-nums; }
+  .series-games .g-place { color: #94a3b8; }
+  .series-games li.is-next .g-place { color: #1d4ed8; }
+  .series-games .g-result { font-variant-numeric: tabular-nums; color: #1c1e21; font-weight: 600; }
+  .series-games li.is-next .g-result { color: #1d4ed8; }
 
   @media (max-width: 860px) {
     /* 좁은 화면에선 계단 대신 세로로 쌓고, 카드 사이를 아래쪽 연결선으로 잇는다. */
@@ -222,8 +238,8 @@
   {% if bracket %}
     <div class="bracket-section">
       <h2>
-        🏆 포스트시즌 {% if not regular_is_final %}예상 {% endif %}대진표
-        <span class="bracket-basis">{% if regular_is_final %}정규시즌 최종 순위 기준{% else %}현재 순위 기준{% endif %}</span>
+        🏆 포스트시즌 {% if not postseason_started %}예상 {% endif %}대진표
+        <span class="bracket-basis">{% if postseason_started %}경기 결과 반영{% elif regular_is_final %}정규시즌 최종 순위 기준{% else %}현재 순위 기준{% endif %}</span>
       </h2>
       <div class="bracket-ladder">
         {% for series in bracket %}
@@ -233,16 +249,29 @@
               <span class="series-format">{{ series.format }}</span>
             </div>
             {% for row in series.teams %}
-              <div class="series-team">
+              <div class="series-team{% if row.is_winner %} is-winner{% endif %}">
                 <span class="series-seed">{{ row.rank }}</span>
                 {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
                   {% if logo %}<img src="{{ logo }}" alt="" loading="lazy">{% endif %}
                   {% if tid %}<a class="team-name-link" href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
                 {% endwith %}
+                {% if series.games %}<span class="series-wins">{{ row.wins }}승</span>{% endif %}
               </div>
             {% endfor %}
             {% if series.waiting_for %}
               <div class="series-team is-waiting"><span class="series-seed">?</span>{{ series.waiting_for }}</div>
+            {% endif %}
+            {% if series.games %}
+              <ul class="series-games">
+                {% for game in series.games %}
+                  <li{% if game == series.next_game %} class="is-next"{% endif %}>
+                    <span class="g-no">{% if game.game_no %}{{ game.game_no }}차전{% else %}·{% endif %}</span>
+                    <span class="g-date">{{ game.game_date|date:"n.j" }}</span>
+                    <span class="g-place">{{ game.stadium }}</span>
+                    <span class="g-result">{% if game.is_played %}{{ game.result_label }}{% else %}{{ game.game_time }}{% endif %}</span>
+                  </li>
+                {% endfor %}
+              </ul>
             {% endif %}
           </div>
         {% endfor %}
