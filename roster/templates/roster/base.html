@@ -146,6 +146,7 @@
       <a href="{% url 'roster:standings' %}">리그 순위</a>
       <a href="{% url 'roster:attendance_stats' %}">매진율 통계</a>
       <a href="{% url 'roster:recent_events' %}">최근 변동</a>
+      <a href="{% url 'roster:transactions' %}">이적시장</a>
       <a class="nav-event" href="{% url 'roster:prediction' %}">🔥 승부예측</a>
       <a href="{% url 'roster:feedback' %}">의견 보내기</a>
       <button type="button" class="info-btn" onclick="document.getElementById('whatsNewDialog').showModal()">📢 업데이트 소식</button>
@@ -204,7 +205,16 @@
     <div class="dialog-body">
       <h3>🎉 업데이트 소식</h3>
       <details class="whatsnew-entry">
-        <summary>10/3 업데이트 <span class="whatsnew-new">NEW</span></summary>
+        <summary>10/28 업데이트 <span class="whatsnew-new">NEW</span></summary>
+        <ul class="whatsnew-list">
+          <li><strong>🔁 이적시장 타임라인</strong>메뉴의 "이적시장"에서 방출·FA·트레이드·2차 드래프트 공시를 날짜순으로 볼 수 있어요. 경기가 없는 비시즌에도 선수 이동 소식은 계속 올라와요. 이적·계약 / 부상·재활 / 기타로 나눠 보거나 지난 시즌 공시도 찾아볼 수 있어요.</li>
+          <li><strong>🏆 대진표에 실제 결과 반영</strong>포스트시즌 대진표가 매일 갱신돼요. 시리즈 전적과 진출 팀이 바로 표시되고, 각 차전의 날짜·구장·결과까지 함께 보여줘요. 다음 경기는 따로 강조해요.</li>
+          <li><strong>📋 비시즌에도 명단 유지</strong>시즌이 끝나 등록/말소 변동이 멈추면 화면이 비어 보이던 문제를 고쳤어요. 이제 마지막 변동일 기준 명단을 그대로 보여주고, 그 사실을 화면에 안내해요.</li>
+          <li><strong>📊 최종 순위 표시 · 매진율 집계 정리</strong>정규시즌이 끝난 1군·2군 순위에 "정규시즌 최종" 표시가 붙어요. 매진율 통계는 포스트시즌 경기를 빼고 정규시즌만 집계해, 실제 흥행 추이를 왜곡 없이 보여줘요.</li>
+        </ul>
+      </details>
+      <details class="whatsnew-entry">
+        <summary>10/3 업데이트</summary>
         <ul class="whatsnew-list">
           <li><strong>🏆 포스트시즌 예상 대진표</strong>메인 화면에서 1~5위 팀으로 짜인 와일드카드부터 한국시리즈까지의 대진표를 볼 수 있어요. 시즌 중엔 현재 순위 기준 예상, 정규시즌이 끝나면 최종 순위 기준으로 보여줘요.</li>
           <li><strong>⚡️ 메인 화면 로딩 속도 개선</strong>메인 화면의 "기대되는 2군 콜업 선수"를 미리 준비해둬서, 가끔 첫 화면이 몇 초씩 늦게 뜨던 현상이 줄었어요.</li>

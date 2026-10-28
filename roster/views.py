@@ -3,6 +3,7 @@ import io
 import json
 import logging
 from collections import Counter, defaultdict
+from itertools import groupby
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, time as dt_time, timedelta
 from pathlib import Path
@@ -681,6 +682,100 @@ def player_news_summary(request, player_id):
         "article_count": len(articles or []),
         "llm_model": settings.GROQ_MODEL,
     })
+
+
+# 공시 항목을 화면 탭으로 묶는다. 겹치지 않게 나누고, 어디에도 안 들어가는 항목은 '기타'로 떨어진다.
+# 부상자 명단만 한 시즌 200건이 넘어서, 한데 섞으면 이적 소식이 묻힌다.
+TRANSACTION_GROUPS = [
+    ("market", "이적·계약", {
+        "자유계약선수", "웨이버", "임의해지", "임의해지 복귀", "군보류 자유계약선수",
+        "FA 계약", "FA 자격취득", "FA 보상선수", "트레이드", "트레이드(웨이버)", "2차 드래프트",
+    }),
+    ("injury", "부상·재활", {"부상자 명단", "치료·재활명단", "재활선수(외국인 선수)"}),
+    ("etc", "기타", set()),
+]
+DEFAULT_TRANSACTION_GROUP = "market"
+EARLIEST_TRANSACTION_SEASON = 2021  # KBO 선수 이동 현황이 조회를 지원하는 가장 이른 시즌
+
+# 화면 맨 위 요약 지표. 항목이 17종이라 그대로 세면 눈에 안 들어와서, 성격이 같은 것끼리 묶는다.
+TRANSACTION_SUMMARY = [
+    ("방출", "k-out", {"자유계약선수", "웨이버", "군보류 자유계약선수", "임의해지"}),
+    ("FA", "k-fa", {"FA 계약", "FA 자격취득", "FA 보상선수"}),
+    ("트레이드", "k-trade", {"트레이드", "트레이드(웨이버)"}),
+    ("복귀·영입", "k-in", {"임의해지 복귀", "2차 드래프트", "소속선수 추가 등록"}),
+]
+
+
+def _transaction_group(kind):
+    for key, _, kinds in TRANSACTION_GROUPS:
+        if kind in kinds:
+            return key
+    return "etc"
+
+
+def _requested_season(request, today):
+    """?year= 로 들어온 시즌. 범위를 벗어나거나 숫자가 아니면 올해로 돌린다."""
+    try:
+        year = int(request.GET.get("year", today.year))
+    except ValueError:
+        return today.year
+    return year if EARLIEST_TRANSACTION_SEASON <= year <= today.year else today.year
+
+
+def transactions(request):
+    """이적시장 타임라인 — KBO 선수 이동 공시를 날짜별로 묶어 보여준다.
+
+    비시즌에는 로스터 등록/말소가 멈추지만 방출·FA·트레이드 공시는 계속 올라오기 때문에,
+    경기가 없는 기간에 유일하게 갱신되는 화면이다.
+    """
+    today = date.today()
+    season = _requested_season(request, today)
+    rows = _cached_fetch(
+        f"transactions_{season}_{today}",
+        lambda: scraping.fetch_transactions(season),
+    )
+
+    group = request.GET.get("group", DEFAULT_TRANSACTION_GROUP)
+    if group not in {key for key, *_ in TRANSACTION_GROUPS} | {"all"}:
+        group = DEFAULT_TRANSACTION_GROUP
+
+    counts = Counter(_transaction_group(row.kind) for row in rows)
+    visible = [r for r in rows if group == "all" or _transaction_group(r.kind) == group]
+
+    # 선수 상세가 있는 선수만 링크를 건다(공시에는 2군·신인 등 DB에 없는 이름도 섞여 온다).
+    player_ids = dict(
+        Player.objects.filter(name__in={r.player_name for r in visible}).values_list("name", "id")
+    )
+    team_ids_by_name = dict(Team.objects.values_list("name", "id"))
+
+    days = [
+        {"date": day, "rows": list(group_rows)}
+        for day, group_rows in groupby(visible, key=lambda r: r.tx_date)
+    ]
+
+    return render(
+        request,
+        "roster/transactions.html",
+        {
+            "days": days,
+            "total": len(visible),
+            "group": group,
+            "groups": [
+                {"key": key, "label": label, "count": counts.get(key, 0)}
+                for key, label, _ in TRANSACTION_GROUPS
+            ],
+            "all_count": len(rows),
+            "summary": [
+                {"label": label, "css": css, "count": sum(1 for r in rows if r.kind in kinds)}
+                for label, css, kinds in TRANSACTION_SUMMARY
+            ],
+            "latest_date": rows[0].tx_date if rows else None,
+            "season": season,
+            "seasons": range(today.year, EARLIEST_TRANSACTION_SEASON - 1, -1),
+            "player_ids": player_ids,
+            "team_ids_by_name": team_ids_by_name,
+        },
+    )
 
 
 @require_http_methods(["GET", "POST"])

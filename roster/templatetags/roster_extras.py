@@ -99,3 +99,25 @@ def postseason_label(rank):
 def postseason_class(rank):
     entry = _POSTSEASON.get(str(rank))
     return entry[1] if entry else ""
+
+
+# 공시 항목별 배지 색. 방출 계열(k-out)과 영입·복귀(k-in)는 성격이 반대라 색을 나눈다.
+_TRANSACTION_KIND_CLASS = {
+    "자유계약선수": "k-out",
+    "웨이버": "k-out",
+    "임의해지": "k-out",
+    "군보류 자유계약선수": "k-out",
+    "트레이드(웨이버)": "k-trade",
+    "임의해지 복귀": "k-in",
+    "소속선수 추가 등록": "k-in",
+    "2차 드래프트": "k-in",
+    "트레이드": "k-trade",
+    "FA 계약": "k-fa",
+    "FA 자격취득": "k-fa",
+    "FA 보상선수": "k-fa",
+}
+
+
+@register.filter
+def transaction_kind_class(kind):
+    return _TRANSACTION_KIND_CLASS.get(kind, "")

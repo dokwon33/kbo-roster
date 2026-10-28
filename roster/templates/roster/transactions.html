@@ -1,0 +1,202 @@
+{% extends "roster/base.html" %}
+{% load roster_extras %}
+{% block title %}이적시장 · KBO 로스터 트래커{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* 공시 성격별 색. 방출(빨강) / FA(금색) / 트레이드(파랑) / 복귀·영입(초록)로 통일해
+     요약 카드와 타임라인 배지가 같은 색을 쓰게 한다. */
+  .tx-page {
+    --out: #b91c1c;  --out-bg: #fef2f2;  --out-line: #fecaca;
+    --fa: #92400e;   --fa-bg: #fffbeb;   --fa-line: #fde68a;
+    --trade: #1d4ed8; --trade-bg: #eff6ff; --trade-line: #bfdbfe;
+    --in: #15803d;   --in-bg: #f0fdf4;   --in-line: #bbf7d0;
+    --rail: #e2e8f0;
+  }
+
+  .tx-head { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+  .tx-head h2 { margin: 0; font-size: 22px; color: #14213d; }
+  .tx-updated { font-size: 12px; color: #94a3b8; padding-bottom: 3px; }
+  .tx-seasons { margin-left: auto; }
+  .tx-seasons select {
+    font: inherit; font-size: 13px; padding: 5px 10px; cursor: pointer;
+    border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #1c1e21;
+  }
+  .tx-intro { font-size: 13px; color: #64748b; margin: 0 0 18px; line-height: 1.5; }
+
+  /* 요약 — 비시즌에 "무슨 일이 얼마나 있었나"를 한눈에 */
+  .tx-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+  }
+  .tx-stat {
+    background: #fff; border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 3px solid #cbd5e1;
+  }
+  .tx-stat .tx-stat-label { font-size: 12px; color: #64748b; }
+  .tx-stat .tx-stat-value {
+    font-size: 24px; font-weight: 700; line-height: 1.15; color: #14213d;
+    font-variant-numeric: tabular-nums;
+  }
+  .tx-stat .tx-stat-unit { font-size: 12px; font-weight: 400; color: #94a3b8; margin-left: 2px; }
+  .tx-stat.k-out { border-left-color: var(--out); } .tx-stat.k-out .tx-stat-value { color: var(--out); }
+  .tx-stat.k-fa { border-left-color: var(--fa); } .tx-stat.k-fa .tx-stat-value { color: var(--fa); }
+  .tx-stat.k-trade { border-left-color: var(--trade); } .tx-stat.k-trade .tx-stat-value { color: var(--trade); }
+  .tx-stat.k-in { border-left-color: var(--in); } .tx-stat.k-in .tx-stat-value { color: var(--in); }
+
+  .tx-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+  .tx-tab {
+    font-size: 13px; color: #475569; text-decoration: none; white-space: nowrap;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 999px; padding: 6px 14px;
+    transition: background .12s, border-color .12s;
+  }
+  .tx-tab:hover { background: #eef1f6; border-color: #cbd5e1; }
+  .tx-tab.is-active { background: #14213d; border-color: #14213d; color: #fff; font-weight: 700; }
+  .tx-tab .tx-count { font-size: 11px; opacity: .7; margin-left: 5px; font-variant-numeric: tabular-nums; }
+
+  /* 타임라인 — 왼쪽 레일에 날짜 노드를 찍고 그 옆으로 공시 카드를 쌓는다. */
+  .tx-timeline { position: relative; padding-left: 18px; }
+  .tx-timeline::before {
+    content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px;
+    width: 2px; background: var(--rail); border-radius: 1px;
+  }
+  .tx-day { position: relative; margin-bottom: 20px; }
+  .tx-day::before {
+    content: ""; position: absolute; left: -18px; top: 5px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #fff; border: 2px solid #94a3b8;
+  }
+  .tx-date {
+    font-size: 13px; font-weight: 700; color: #14213d; margin-bottom: 8px;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .tx-weekday { font-size: 11px; font-weight: 400; color: #94a3b8; }
+  .tx-daycount { font-size: 11px; font-weight: 400; color: #94a3b8; margin-left: auto; }
+
+  .tx-row {
+    display: grid; grid-template-columns: 104px 108px 1fr auto; gap: 12px; align-items: center;
+    background: #fff; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    padding: 10px 14px; margin-bottom: 5px;
+    border-left: 3px solid transparent; transition: box-shadow .12s, transform .12s;
+  }
+  .tx-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); transform: translateX(1px); }
+  .tx-row.k-out { border-left-color: var(--out-line); }
+  .tx-row.k-fa { border-left-color: var(--fa-line); }
+  .tx-row.k-trade { border-left-color: var(--trade-line); }
+  .tx-row.k-in { border-left-color: var(--in-line); }
+
+  /* '군보류 자유계약선수'처럼 긴 항목명이 있어, 잘라내는 대신 두 줄로 흐르게 둔다.
+     항목이 뭔지가 이 화면의 핵심 정보라 생략하면 안 된다. */
+  .tx-kind {
+    font-size: 11px; font-weight: 700; text-align: center; line-height: 1.3;
+    border-radius: 6px; padding: 4px 6px; background: #eef1f6; color: #475569;
+    word-break: keep-all;
+  }
+  .tx-kind.k-out { background: var(--out-bg); color: var(--out); }
+  .tx-kind.k-fa { background: var(--fa-bg); color: var(--fa); }
+  .tx-kind.k-trade { background: var(--trade-bg); color: var(--trade); }
+  .tx-kind.k-in { background: var(--in-bg); color: var(--in); }
+
+  .tx-team { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #475569; min-width: 0; }
+  .tx-team img { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+  .tx-team a { color: inherit; text-decoration: none; }
+  .tx-team a:hover { color: #14213d; text-decoration: underline; }
+
+  .tx-player { font-size: 15px; font-weight: 700; color: #1c1e21; min-width: 0; }
+  .tx-player a { color: inherit; text-decoration: none; }
+  .tx-player a:hover { color: #1d4ed8; text-decoration: underline; }
+  .tx-position {
+    font-size: 11px; font-weight: 400; color: #64748b; margin-left: 6px;
+    background: #f1f5f9; border-radius: 4px; padding: 1px 6px;
+  }
+  .tx-note { font-size: 12px; color: #64748b; text-align: right; white-space: nowrap; }
+
+  .tx-empty {
+    background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    padding: 36px 20px; text-align: center; color: #64748b; font-size: 14px;
+  }
+
+  @media (max-width: 720px) {
+    .tx-summary { grid-template-columns: repeat(2, 1fr); }
+    .tx-seasons { margin-left: 0; width: 100%; }
+    .tx-row { grid-template-columns: 100px 1fr; row-gap: 6px; padding: 11px 12px; }
+    .tx-team { grid-column: 2; }
+    .tx-player { grid-column: 1 / -1; }
+    .tx-note { grid-column: 1 / -1; text-align: left; white-space: normal; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tx-page">
+  <div class="tx-head">
+    <h2>🔁 이적시장</h2>
+    {% if latest_date %}<span class="tx-updated">최근 공시 {{ latest_date|date:"n월 j일" }}</span>{% endif %}
+    <form class="tx-seasons" method="get">
+      <input type="hidden" name="group" value="{{ group }}">
+      <select name="year" onchange="this.form.submit()" aria-label="시즌 선택">
+        {% for year in seasons %}
+          <option value="{{ year }}"{% if year == season %} selected{% endif %}>{{ year }}시즌</option>
+        {% endfor %}
+      </select>
+      <noscript><button type="submit">보기</button></noscript>
+    </form>
+  </div>
+  <p class="tx-intro">
+    KBO 공식 선수 이동 공시입니다. 경기가 없는 비시즌에도 방출·FA·트레이드 소식은 계속 올라옵니다.
+  </p>
+
+  <div class="tx-summary">
+    {% for stat in summary %}
+      <div class="tx-stat {{ stat.css }}">
+        <div class="tx-stat-label">{{ stat.label }}</div>
+        <div class="tx-stat-value">{{ stat.count }}<span class="tx-stat-unit">건</span></div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="tx-tabs">
+    {% for tab in groups %}
+      <a class="tx-tab{% if group == tab.key %} is-active{% endif %}"
+         href="?group={{ tab.key }}&year={{ season }}">{{ tab.label }}<span class="tx-count">{{ tab.count }}</span></a>
+    {% endfor %}
+    <a class="tx-tab{% if group == 'all' %} is-active{% endif %}"
+       href="?group=all&year={{ season }}">전체<span class="tx-count">{{ all_count }}</span></a>
+  </div>
+
+  {% if days %}
+    <div class="tx-timeline">
+      {% for day in days %}
+        <div class="tx-day">
+          <div class="tx-date">
+            {{ day.date|date:"n월 j일" }}
+            <span class="tx-weekday">{{ day.date|date:"D"|slice:":1" }}</span>
+            <span class="tx-daycount">{{ day.rows|length }}건</span>
+          </div>
+          {% for row in day.rows %}
+            {% with css=row.kind|transaction_kind_class %}
+              <div class="tx-row {{ css }}">
+                <span class="tx-kind {{ css }}">{{ row.kind }}</span>
+                <span class="tx-team">
+                  {% with logo=row.team|team_logo_url tid=team_ids_by_name|get_item:row.team %}
+                    {% if logo %}<img src="{{ logo }}" alt="" loading="lazy">{% endif %}
+                    {% if tid %}<a href="{% url 'roster:team_detail' tid %}">{{ row.team }}</a>{% else %}{{ row.team }}{% endif %}
+                  {% endwith %}
+                </span>
+                <span class="tx-player">
+                  {% with pid=player_ids|get_item:row.player_name %}
+                    {% if pid %}<a href="{% url 'roster:player_detail' pid %}">{{ row.player_name }}</a>{% else %}{{ row.player_name }}{% endif %}
+                  {% endwith %}
+                  {% if row.position %}<span class="tx-position">{{ row.position }}</span>{% endif %}
+                </span>
+                <span class="tx-note">{{ row.note }}</span>
+              </div>
+            {% endwith %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="tx-empty">해당 조건의 공시가 없습니다.</p>
+  {% endif %}
+</div>
+{% endblock %}

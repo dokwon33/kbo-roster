@@ -15,6 +15,7 @@ urlpatterns = [
     path("events/", views.recent_events, name="recent_events"),
     path("standings/", views.standings, name="standings"),
     path("attendance/", views.attendance_stats, name="attendance_stats"),
+    path("transactions/", views.transactions, name="transactions"),
     path("feedback/", views.feedback, name="feedback"),
     path("prediction/", views.prediction, name="prediction"),
     path("prediction/results/", views.prediction_results, name="prediction_results"),

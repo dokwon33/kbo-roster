@@ -182,6 +182,9 @@ class FinalStandingsTests(TestCase):
 
     FUTURES_END = date(2026, 9, 20)
     REGULAR_END = date(2026, 10, 7)
+    # 업데이트 소식 팝업(모든 페이지에 포함)에도 '정규시즌 최종' 문구가 있어서,
+    # 페이지 전체 문구 대신 순위표에 붙는 배지 마크업으로 검사한다.
+    FINAL_TAG = '<span class="final-tag">정규시즌 최종</span>'
 
     def setUp(self):
         cache.clear()
@@ -227,7 +230,7 @@ class FinalStandingsTests(TestCase):
 
         self.assertFalse(resp.context["regular_is_final"])
         self.assertFalse(resp.context["futures_is_final"])
-        self.assertNotContains(resp, "정규시즌 최종")
+        self.assertNotContains(resp, self.FINAL_TAG, html=True)
 
     def test_last_game_day_is_not_yet_final(self):
         """마지막 경기 당일은 그날 결과로 순위가 바뀔 수 있어 확정으로 보지 않는다."""
@@ -239,7 +242,7 @@ class FinalStandingsTests(TestCase):
 
         self.assertFalse(resp.context["regular_is_final"])
         self.assertFalse(resp.context["futures_is_final"])
-        self.assertNotContains(resp, "정규시즌 최종")
+        self.assertNotContains(resp, self.FINAL_TAG, html=True)
 
 
 @_STATIC_STORAGE
@@ -555,3 +558,129 @@ class PostseasonScheduleParsingTests(TestCase):
         self.assertEqual([g.game_no for g in games], [1, 2])
         self.assertEqual([g.game_date for g in games], [date(2026, 10, 17)] * 2)
         self.assertEqual([g.round_key for g in games], ["spo", "spo"])
+
+
+class TransactionParsingTests(TestCase):
+    """KBO 선수 이동 공시 응답 파싱."""
+
+    def _payload(self, rows, total=None):
+        return {
+            "rows": [{"row": [{"Text": c} for c in r]} for r in rows],
+            "totalCnt": len(rows) if total is None else total,
+        }
+
+    def test_splits_player_name_and_position(self):
+        payload = self._payload([["2026-10-26", "자유계약선수", "KIA", "파노니(투수)", ""]])
+        tx, = scraping._parse_transaction_rows(payload)
+
+        self.assertEqual(tx.tx_date, date(2026, 10, 26))
+        self.assertEqual((tx.kind, tx.team), ("자유계약선수", "KIA"))
+        self.assertEqual((tx.player_name, tx.position), ("파노니", "투수"))
+
+    def test_keeps_trade_direction_note(self):
+        payload = self._payload([["2025-11-25", "트레이드", "삼성", "박세혁(포수)", "NC→삼성"]])
+        tx, = scraping._parse_transaction_rows(payload)
+        self.assertEqual(tx.note, "NC→삼성")
+
+    def test_skips_rows_without_valid_date(self):
+        payload = self._payload([
+            ["", "자유계약선수", "KIA", "홍길동(투수)", ""],
+            ["2026-10-26", "웨이버", "LG", "김철수(포수)", ""],
+        ])
+        rows = scraping._parse_transaction_rows(payload)
+        self.assertEqual([r.player_name for r in rows], ["김철수"])
+
+    def test_handles_name_without_position(self):
+        payload = self._payload([["2026-10-26", "개명", "LG", "김철수", ""]])
+        tx, = scraping._parse_transaction_rows(payload)
+        self.assertEqual((tx.player_name, tx.position), ("김철수", ""))
+
+    def test_stops_paging_once_total_reached(self):
+        payload = self._payload([["2026-10-26", "웨이버", "LG", "김철수(포수)", ""]], total=1)
+        with patch.object(scraping.requests, "post") as post:
+            post.return_value.json.return_value = payload
+            post.return_value.raise_for_status.return_value = None
+            rows = scraping.fetch_transactions(2026)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(post.call_count, 1)
+        # bdSc를 빈 문자열로 보내면 서버가 500을 내려준다.
+        self.assertEqual(post.call_args.kwargs["data"]["bdSc"], scraping.ALL_TRANSACTION_KINDS)
+
+
+@_STATIC_STORAGE
+class TransactionPageTests(TestCase):
+    """이적시장 타임라인 — 비시즌에 유일하게 갱신되는 화면."""
+
+    ROWS = [
+        ("2026-11-20", "자유계약선수", "KIA", "방출선수(투수)", ""),
+        ("2026-11-20", "부상자 명단", "LG", "부상선수(포수)", "10일"),
+        ("2026-11-18", "트레이드", "삼성", "이적선수(내야수)", "NC→삼성"),
+        ("2026-11-15", "등번호 변경", "KT", "기타선수(외야수)", "11→22"),
+    ]
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
+    def _get(self, query="", today=date(2026, 11, 25)):
+        rows = scraping._parse_transaction_rows(
+            {"rows": [{"row": [{"Text": c} for c in r]} for r in self.ROWS], "totalCnt": len(self.ROWS)}
+        )
+        rows.sort(key=lambda t: t.tx_date, reverse=True)
+        with patch.object(scraping, "fetch_transactions", return_value=rows) as fetch, \
+             patch("roster.views.date") as mock_date:
+            mock_date.today.return_value = today
+            resp = self.client.get(reverse("roster:transactions") + query)
+        return resp, fetch
+
+    def _kinds(self, resp):
+        return [r.kind for day in resp.context["days"] for r in day["rows"]]
+
+    def test_defaults_to_market_moves_only(self):
+        """부상자 명단이 한 시즌 200건이 넘어, 기본 화면에서는 이적 소식만 보여준다."""
+        resp, _ = self._get()
+
+        self.assertEqual(resp.context["group"], "market")
+        self.assertEqual(self._kinds(resp), ["자유계약선수", "트레이드"])
+        self.assertContains(resp, "NC→삼성")
+
+    def test_groups_rows_by_date(self):
+        resp, _ = self._get("?group=all")
+
+        self.assertEqual(
+            [(d["date"], len(d["rows"])) for d in resp.context["days"]],
+            [(date(2026, 11, 20), 2), (date(2026, 11, 18), 1), (date(2026, 11, 15), 1)],
+        )
+
+    def test_group_filter_and_counts(self):
+        resp, _ = self._get("?group=injury")
+
+        self.assertEqual(self._kinds(resp), ["부상자 명단"])
+        self.assertEqual(
+            {g["key"]: g["count"] for g in resp.context["groups"]},
+            {"market": 2, "injury": 1, "etc": 1},
+        )
+
+    def test_unknown_group_falls_back_to_default(self):
+        resp, _ = self._get("?group=없는그룹")
+        self.assertEqual(resp.context["group"], "market")
+
+    def test_season_selection(self):
+        _, fetch = self._get("?year=2024")
+        self.assertEqual(fetch.call_args.args, (2024,))
+
+    def test_invalid_or_future_season_falls_back_to_this_year(self):
+        for query in ("?year=abc", "?year=2099", "?year=1999"):
+            cache.clear()  # 같은 시즌으로 떨어지므로 캐시를 비워야 매번 다시 조회한다.
+            _, fetch = self._get(query)
+            self.assertEqual(fetch.call_args.args, (2026,), query)
+
+    def test_links_only_players_present_in_db(self):
+        team = Team.objects.create(name="KIA")
+        known = Player.objects.create(name="방출선수", team=team, position="투")
+
+        resp, _ = self._get()
+
+        self.assertEqual(resp.context["player_ids"], {"방출선수": known.id})
+        self.assertContains(resp, reverse("roster:player_detail", args=[known.id]))

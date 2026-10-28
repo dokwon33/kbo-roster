@@ -685,3 +685,91 @@ def fetch_postseason_games(year: int) -> list:
     games = _parse_postseason_rows(resp.json(), year)
     games.sort(key=lambda g: (g.game_date, g.game_time))
     return games
+
+
+TRANSACTION_URL = "https://www.koreabaseball.com/ws/Player.asmx/GetTradeList"
+TRANSACTION_REFERER = "https://www.koreabaseball.com/Player/Trade.aspx"
+ALL_TRANSACTION_KINDS = "0"  # bdSc는 숫자만 받는다. 빈 문자열을 보내면 500이 떨어진다.
+TRANSACTION_PAGE_SIZE = 300
+TRANSACTION_MAX_PAGES = 20  # 한 시즌 600건 안팎이라 넉넉한 상한. 응답이 이상해도 무한 루프를 막는다.
+
+# "파노니(투수)" / "신인(지명권)"처럼 괄호 안에 포지션이 붙어 온다.
+_PLAYER_POSITION_RE = re.compile(r"^(.*?)\s*\(([^)]*)\)\s*$")
+
+
+@dataclass
+class Transaction:
+    tx_date: date
+    kind: str  # 자유계약선수 / 트레이드 / FA 계약 ...
+    team: str
+    player_name: str
+    position: str
+    note: str  # 트레이드 방향("NC→삼성"), 부상자 명단 일수 등
+
+
+def _parse_transaction_rows(payload: dict) -> list:
+    rows = []
+    for entry in payload.get("rows", []):
+        cells = [re.sub(r"<[^>]+>", "", c.get("Text") or "").strip() for c in entry.get("row", [])]
+        if len(cells) < 5:
+            continue
+        raw_date, kind, team, player, note = cells[:5]
+        try:
+            tx_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        matched = _PLAYER_POSITION_RE.match(player)
+        name, position = (matched.group(1), matched.group(2)) if matched else (player, "")
+        rows.append(
+            Transaction(
+                tx_date=tx_date,
+                kind=kind,
+                team=team,
+                player_name=name.strip(),
+                position=position.strip(),
+                note=note,
+            )
+        )
+    return rows
+
+
+def fetch_transactions(year: int) -> list:
+    """해당 시즌 선수 이동 공시(방출·FA·트레이드·군보류 등) 전체를 최신순으로 가져온다.
+
+    KBO 공식 '선수 이동 현황'이 쓰는 API라, 뉴스로 추정하지 않아도 되는 1차 자료다.
+    한 페이지에 다 안 들어와서 totalCnt를 채울 때까지 이어 받는다.
+    """
+    collected = []
+    for page in range(1, TRANSACTION_MAX_PAGES + 1):
+        resp = requests.post(
+            TRANSACTION_URL,
+            data={
+                "seasonId": str(year),
+                "monthId": "0",
+                "bdSc": ALL_TRANSACTION_KINDS,
+                "teamName": "",
+                "searchIf": "",
+                "pageNo": str(page),
+                "listCount": str(TRANSACTION_PAGE_SIZE),
+            },
+            headers={
+                **HEADERS,
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": TRANSACTION_REFERER,
+            },
+            timeout=25,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+
+        batch = _parse_transaction_rows(payload)
+        if not batch:
+            break
+        collected.extend(batch)
+        if len(collected) >= int(payload.get("totalCnt") or 0):
+            break
+
+    collected.sort(key=lambda t: t.tx_date, reverse=True)
+    return collected
